@@ -1,15 +1,20 @@
-import { useState, useEffect } from 'react';
-import { useDispatch, useSelector } from 'react-redux';
-import { useIntl } from '@edx/frontend-platform/i18n';
+import { useState, useEffect } from "react";
+import { useDispatch, useSelector } from "react-redux";
+import { useIntl } from "@edx/frontend-platform/i18n";
 
-import { RequestStatus } from '../data/constants';
-import { getLoadingDetailsStatus, getLoadingSettingsStatus, getSavingStatus } from './data/selectors';
-import { validateScheduleAndDetails, updateWithDefaultValues } from './utils';
+import { RequestStatus } from "../data/constants";
+import {
+  getLoadingDetailsStatus,
+  getLoadingSettingsStatus,
+  getSavingStatus,
+} from "./data/selectors";
+import { validateScheduleAndDetails, updateWithDefaultValues } from "./utils";
 
 const useLoadValuesPrompt = (
   courseId,
   fetchCourseDetailsQuery,
   fetchCourseSettingsQuery,
+  fetchMfeConfigQuery
 ) => {
   const dispatch = useDispatch();
   const loadingDetailsStatus = useSelector(getLoadingDetailsStatus);
@@ -22,9 +27,16 @@ const useLoadValuesPrompt = (
   }, [courseId]);
 
   useEffect(() => {
-    if (loadingDetailsStatus === RequestStatus.FAILED || loadingSettingsStatus === RequestStatus.FAILED) {
+    dispatch(fetchMfeConfigQuery());
+  }, []);
+
+  useEffect(() => {
+    if (
+      loadingDetailsStatus === RequestStatus.FAILED ||
+      loadingSettingsStatus === RequestStatus.FAILED
+    ) {
       setShowLoadFailedAlert(true);
-      window.scrollTo({ top: 0, behavior: 'smooth' });
+      window.scrollTo({ top: 0, behavior: "smooth" });
     }
   }, [loadingDetailsStatus, loadingSettingsStatus]);
 
@@ -37,7 +49,7 @@ const useSaveValuesPrompt = (
   courseId,
   updateDataQuery,
   canShowCertificateAvailableDateField,
-  initialEditedData = {},
+  initialEditedData = {}
 ) => {
   const intl = useIntl();
   const dispatch = useDispatch();
@@ -57,7 +69,11 @@ const useSaveValuesPrompt = (
   }, [initialEditedData]);
 
   useEffect(() => {
-    const errors = validateScheduleAndDetails(editedValues, canShowCertificateAvailableDateField, intl);
+    const errors = validateScheduleAndDetails(
+      editedValues,
+      canShowCertificateAvailableDateField,
+      intl
+    );
     setErrorFields(errors);
   }, [editedValues]);
 
@@ -69,7 +85,7 @@ const useSaveValuesPrompt = (
     if (editedValues[fieldName] !== value) {
       setEditedValues((prevEditedValues) => ({
         ...prevEditedValues,
-        [fieldName]: value || '',
+        [fieldName]: value || "",
       }));
 
       if (!showModifiedAlert) {
@@ -110,7 +126,7 @@ const useSaveValuesPrompt = (
       setShowSuccessfulAlert(true);
       setShowFailedAlert(false);
       setTimeout(() => setShowSuccessfulAlert(false), 15000);
-      window.scrollTo({ top: 0, behavior: 'smooth' });
+      window.scrollTo({ top: 0, behavior: "smooth" });
 
       if (!isEditableState) {
         setShowModifiedAlert(false);
@@ -119,7 +135,7 @@ const useSaveValuesPrompt = (
       setIsQueryPending(false);
       setShowSuccessfulAlert(false);
       setShowFailedAlert(true);
-      window.scrollTo({ top: 0, behavior: 'smooth' });
+      window.scrollTo({ top: 0, behavior: "smooth" });
 
       if (!isEditableState) {
         setShowModifiedAlert(false);

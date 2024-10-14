@@ -1,9 +1,10 @@
-import { RequestStatus } from '../../data/constants';
+import { RequestStatus } from "../../data/constants";
 import {
   getCourseDetails,
   updateCourseDetails,
   getCourseSettings,
-} from './api';
+  getMfeConfig,
+} from "./api";
 import {
   updateSavingStatus,
   updateLoadingDetailsStatus,
@@ -11,7 +12,9 @@ import {
   fetchCourseDetailsSuccess,
   updateCourseDetailsSuccess,
   fetchCourseSettingsSuccess,
-} from './slice';
+  updateLoadingMfeConfigStatus,
+  fetchMfeConfigSuccess,
+} from "./slice";
 
 export function fetchCourseDetailsQuery(courseId) {
   return async (dispatch) => {
@@ -20,10 +23,14 @@ export function fetchCourseDetailsQuery(courseId) {
     try {
       const detailsValues = await getCourseDetails(courseId);
       dispatch(fetchCourseDetailsSuccess(detailsValues));
-      dispatch(updateLoadingDetailsStatus({ status: RequestStatus.SUCCESSFUL }));
+      dispatch(
+        updateLoadingDetailsStatus({ status: RequestStatus.SUCCESSFUL })
+      );
     } catch (error) {
       if (error.response && error.response.status === 403) {
-        dispatch(updateLoadingDetailsStatus({ courseId, status: RequestStatus.DENIED }));
+        dispatch(
+          updateLoadingDetailsStatus({ courseId, status: RequestStatus.DENIED })
+        );
       } else {
         dispatch(updateLoadingDetailsStatus({ status: RequestStatus.FAILED }));
       }
@@ -49,18 +56,58 @@ export function updateCourseDetailsQuery(courseId, details) {
 
 export function fetchCourseSettingsQuery(courseId) {
   return async (dispatch) => {
-    dispatch(updateLoadingSettingsStatus({ status: RequestStatus.IN_PROGRESS }));
+    dispatch(
+      updateLoadingSettingsStatus({ status: RequestStatus.IN_PROGRESS })
+    );
 
     try {
       const settingsValues = await getCourseSettings(courseId);
       dispatch(fetchCourseSettingsSuccess(settingsValues));
-      dispatch(updateLoadingSettingsStatus({ status: RequestStatus.SUCCESSFUL }));
+      dispatch(
+        updateLoadingSettingsStatus({ status: RequestStatus.SUCCESSFUL })
+      );
       return true;
     } catch (error) {
       if (error.response && error.response.status === 403) {
-        dispatch(updateLoadingSettingsStatus({ courseId, status: RequestStatus.DENIED }));
+        dispatch(
+          updateLoadingSettingsStatus({
+            courseId,
+            status: RequestStatus.DENIED,
+          })
+        );
       } else {
         dispatch(updateLoadingSettingsStatus({ status: RequestStatus.FAILED }));
+      }
+      return false;
+    }
+  };
+}
+
+export function fetchMfeConfigQuery() {
+  return async (dispatch) => {
+    dispatch(
+      updateLoadingMfeConfigStatus({ status: RequestStatus.IN_PROGRESS })
+    );
+
+    try {
+      const mfeConfig = await getMfeConfig();
+      dispatch(fetchMfeConfigSuccess(mfeConfig));
+      dispatch(
+        updateLoadingMfeConfigStatus({ status: RequestStatus.SUCCESSFUL })
+      );
+      return true;
+    } catch (error) {
+      if (error.response && error.response.status === 403) {
+        dispatch(
+          updateLoadingMfeConfigStatus({
+            courseId,
+            status: RequestStatus.DENIED,
+          })
+        );
+      } else {
+        dispatch(
+          updateLoadingMfeConfigStatus({ status: RequestStatus.FAILED })
+        );
       }
       return false;
     }

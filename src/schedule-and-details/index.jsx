@@ -1,59 +1,68 @@
-import React from 'react';
-import PropTypes from 'prop-types';
-import { useSelector } from 'react-redux';
-import {
-  Container, Button, Layout, StatefulButton,
-} from '@openedx/paragon';
+import React from "react";
+import PropTypes from "prop-types";
+import { useSelector } from "react-redux";
+import { Container, Button, Layout, StatefulButton } from "@openedx/paragon";
 import {
   CheckCircle as CheckCircleIcon,
   ErrorOutline as ErrorOutlineIcon,
   Warning as WarningIcon,
-} from '@openedx/paragon/icons';
-import { injectIntl, intlShape } from '@edx/frontend-platform/i18n';
+} from "@openedx/paragon/icons";
+import { injectIntl, intlShape } from "@edx/frontend-platform/i18n";
 
-import Placeholder from '../editors/Placeholder';
-import { RequestStatus } from '../data/constants';
-import { useModel } from '../generic/model-store';
-import AlertMessage from '../generic/alert-message';
-import InternetConnectionAlert from '../generic/internet-connection-alert';
-import { STATEFUL_BUTTON_STATES } from '../constants';
-import getPageHeadTitle from '../generic/utils';
-import { useScrollToHashElement } from '../hooks';
+import Placeholder from "../editors/Placeholder";
+import { RequestStatus } from "../data/constants";
+import { useModel } from "../generic/model-store";
+import AlertMessage from "../generic/alert-message";
+import InternetConnectionAlert from "../generic/internet-connection-alert";
+import { STATEFUL_BUTTON_STATES } from "../constants";
+import getPageHeadTitle from "../generic/utils";
+import { useScrollToHashElement } from "../hooks";
 import {
   fetchCourseSettingsQuery,
   fetchCourseDetailsQuery,
   updateCourseDetailsQuery,
-} from './data/thunks';
+  fetchMfeConfigQuery,
+} from "./data/thunks";
 import {
   getCourseSettings,
   getCourseDetails,
   getLoadingDetailsStatus,
   getLoadingSettingsStatus,
-} from './data/selectors';
-import BasicSection from './basic-section';
-import CreditSection from './credit-section';
-import DetailsSection from './details-section';
-import IntroducingSection from './introducing-section';
-import PacingSection from './pacing-section';
-import ScheduleSection from './schedule-section';
-import LearningOutcomesSection from './learning-outcomes-section';
-import InstructorsSection from './instructors-section';
-import RequirementsSection from './requirements-section';
-import LicenseSection from './license-section';
-import ScheduleSidebar from './schedule-sidebar';
-import messages from './messages';
-import { useLoadValuesPrompt, useSaveValuesPrompt } from './hooks';
+  getLoadingMfeConfigStatus,
+  getMfeConfig,
+} from "./data/selectors";
+import BasicSection from "./basic-section";
+import CreditSection from "./credit-section";
+import DetailsSection from "./details-section";
+import IntroducingSection from "./introducing-section";
+import PacingSection from "./pacing-section";
+import ScheduleSection from "./schedule-section";
+import LearningOutcomesSection from "./learning-outcomes-section";
+import InstructorsSection from "./instructors-section";
+import RequirementsSection from "./requirements-section";
+import LicenseSection from "./license-section";
+import ScheduleSidebar from "./schedule-sidebar";
+import messages from "./messages";
+import { useLoadValuesPrompt, useSaveValuesPrompt } from "./hooks";
+import { CourseMetadataSection } from "./course-metadata-section";
 
 const ScheduleAndDetails = ({ intl, courseId }) => {
   const courseSettings = useSelector(getCourseSettings);
   const courseDetails = useSelector(getCourseDetails);
   const loadingDetailsStatus = useSelector(getLoadingDetailsStatus);
   const loadingSettingsStatus = useSelector(getLoadingSettingsStatus);
-  const isLoading = loadingDetailsStatus === RequestStatus.IN_PROGRESS
-    || loadingSettingsStatus === RequestStatus.IN_PROGRESS;
+  const loadingMfeConfigStatus = useSelector(getLoadingMfeConfigStatus);
+  const mfeConfig = useSelector(getMfeConfig);
+  const isLoading =
+    loadingDetailsStatus === RequestStatus.IN_PROGRESS ||
+    loadingSettingsStatus === RequestStatus.IN_PROGRESS ||
+    loadingMfeConfigStatus === RequestStatus.IN_PROGRESS;
 
-  const course = useModel('courseDetails', courseId);
-  document.title = getPageHeadTitle(course?.name, intl.formatMessage(messages.headingTitle));
+  const course = useModel("courseDetails", courseId);
+  document.title = getPageHeadTitle(
+    course?.name,
+    intl.formatMessage(messages.headingTitle)
+  );
 
   const {
     platformName,
@@ -77,12 +86,11 @@ const ScheduleAndDetails = ({ intl, courseId }) => {
     canShowCertificateAvailableDateField,
   } = courseSettings;
 
-  const {
-    showLoadFailedAlert,
-  } = useLoadValuesPrompt(
+  const { showLoadFailedAlert } = useLoadValuesPrompt(
     courseId,
     fetchCourseDetailsQuery,
     fetchCourseSettingsQuery,
+    fetchMfeConfigQuery
   );
 
   const {
@@ -103,7 +111,7 @@ const ScheduleAndDetails = ({ intl, courseId }) => {
     courseId,
     updateCourseDetailsQuery,
     canShowCertificateAvailableDateField,
-    courseDetails,
+    courseDetails
   );
 
   const {
@@ -145,7 +153,10 @@ const ScheduleAndDetails = ({ intl, courseId }) => {
     return <></>;
   }
 
-  if (loadingDetailsStatus === RequestStatus.DENIED || loadingSettingsStatus === RequestStatus.DENIED) {
+  if (
+    loadingDetailsStatus === RequestStatus.DENIED ||
+    loadingSettingsStatus === RequestStatus.DENIED
+  ) {
     return (
       <div className="row justify-content-center m-6">
         <Placeholder />
@@ -154,7 +165,8 @@ const ScheduleAndDetails = ({ intl, courseId }) => {
   }
 
   const showCreditSection = creditEligibilityEnabled && isCreditCourse;
-  const showRequirementsSection = aboutPageEditable || isPrerequisiteCoursesEnabled || isEntranceExamsEnabled;
+  const showRequirementsSection =
+    aboutPageEditable || isPrerequisiteCoursesEnabled || isEntranceExamsEnabled;
   const hasErrors = !!Object.keys(errorFields).length;
   const updateValuesButtonState = {
     labels: {
@@ -182,10 +194,10 @@ const ScheduleAndDetails = ({ intl, courseId }) => {
             title={intl.formatMessage(messages.alertSuccess)}
             aria-hidden="true"
             aria-labelledby={intl.formatMessage(
-              messages.alertSuccessAriaLabelledby,
+              messages.alertSuccessAriaLabelledby
             )}
             aria-describedby={intl.formatMessage(
-              messages.alertSuccessAriaDescribedby,
+              messages.alertSuccessAriaDescribedby
             )}
           />
           <AlertMessage
@@ -195,10 +207,10 @@ const ScheduleAndDetails = ({ intl, courseId }) => {
             title={intl.formatMessage(messages.alertLoadFail)}
             aria-hidden="true"
             aria-labelledby={intl.formatMessage(
-              messages.alertFailAriaLabelledby,
+              messages.alertFailAriaLabelledby
             )}
             aria-describedby={intl.formatMessage(
-              messages.alertFailAriaDescribedby,
+              messages.alertFailAriaDescribedby
             )}
           />
           <AlertMessage
@@ -208,10 +220,10 @@ const ScheduleAndDetails = ({ intl, courseId }) => {
             title={intl.formatMessage(messages.alertFail)}
             aria-hidden="true"
             aria-labelledby={intl.formatMessage(
-              messages.alertFailAriaLabelledby,
+              messages.alertFailAriaLabelledby
             )}
             aria-describedby={intl.formatMessage(
-              messages.alertFailAriaDescribedby,
+              messages.alertFailAriaDescribedby
             )}
           />
           <header>
@@ -264,7 +276,9 @@ const ScheduleAndDetails = ({ intl, courseId }) => {
                     enrollmentEndEditable={enrollmentEndEditable}
                     certificateAvailableDate={certificateAvailableDate}
                     certificatesDisplayBehavior={certificatesDisplayBehavior}
-                    canShowCertificateAvailableDateField={canShowCertificateAvailableDateField}
+                    canShowCertificateAvailableDateField={
+                      canShowCertificateAvailableDateField
+                    }
                     onChange={handleValuesChange}
                   />
                   {aboutPageEditable && (
@@ -274,6 +288,12 @@ const ScheduleAndDetails = ({ intl, courseId }) => {
                       onChange={handleValuesChange}
                     />
                   )}
+                  <CourseMetadataSection
+                    aboutPageEditable={aboutPageEditable}
+                    mfeConfig={mfeConfig}
+                    courseSettings={courseSettings}
+                    onChange={handleValuesChange}
+                  />
                   <IntroducingSection
                     title={title}
                     overview={overview}
@@ -352,10 +372,10 @@ const ScheduleAndDetails = ({ intl, courseId }) => {
           show={showModifiedAlert}
           aria-hidden={showModifiedAlert}
           aria-labelledby={intl.formatMessage(
-            messages.alertWarningAriaLabelledby,
+            messages.alertWarningAriaLabelledby
           )}
           aria-describedby={intl.formatMessage(
-            messages.alertWarningAriaDescribedby,
+            messages.alertWarningAriaDescribedby
           )}
           role="dialog"
           actions={[
