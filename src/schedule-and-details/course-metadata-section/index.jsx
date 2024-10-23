@@ -1,4 +1,5 @@
 import TextareaAutosize from "react-textarea-autosize";
+import PropTypes from "prop-types";
 import { Form } from "@openedx/paragon";
 import SectionSubHeader from "../../generic/section-sub-header";
 
