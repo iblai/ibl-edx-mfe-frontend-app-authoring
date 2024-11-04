@@ -49,7 +49,7 @@ export const CourseMetadataSection = ({
         />
       )}
       {aboutPageEditable &&
-        mfeConfig.STUDIO_COURSE_METADATA_FIELDS.map((param) => (
+        (mfeConfig.STUDIO_COURSE_METADATA_FIELDS || []).map((param) => (
           <Form.Group className="form-group-custom" key={param.config.label}>
             <Form.Label>{param.config.label}</Form.Label>
             {renderField(courseSettings, param, onChange)}
