@@ -7,11 +7,11 @@ const getApiBaseUrl = () => getConfig().STUDIO_BASE_URL;
 // export const getCourseDetailsApiUrl = (courseId) =>
 //   `${getApiBaseUrl()}/api/contentstore/v1/course_details/${courseId}`;
 export const getCourseDetailsApiUrl = (courseId) =>
-  `${getApiBaseUrl()}/api/ibl/v1/course_settings?course_key=${courseId}`;
+  `${getApiBaseUrl()}/api/ibl/v1/course_settings?course_key=${encodeURIComponent(courseId)}`;
 export const getCourseSettingsApiUrl = (courseId) =>
-  `${getApiBaseUrl()}/api/contentstore/v1/course_settings/${courseId}`;
+  `${getApiBaseUrl()}/api/contentstore/v1/course_settings/${encodeURIComponent(courseId)}`;
 export const getUploadAssetsUrl = (courseId) =>
-  `${getApiBaseUrl()}/assets/${courseId}/`;
+  `${getApiBaseUrl()}/assets/${encodeURIComponent(courseId)}/`;
 const getMfeConfigUrl = `${getConfig().LMS_BASE_URL}/api/mfe_config/v1`;
 
 /**

@@ -11,7 +11,7 @@ function normalizeCourseDetail(data) {
 
 export async function getCourseDetail(courseId, username) {
   const { data } = await getAuthenticatedHttpClient()
-    .get(`${getConfig().LMS_BASE_URL}/api/courses/v1/courses/${courseId}?username=${username}`);
+    .get(`${getConfig().LMS_BASE_URL}/api/ibl/v1/course_settings?course_key=${encodeURIComponent(courseId)}`);
 
   return normalizeCourseDetail(data);
 }
