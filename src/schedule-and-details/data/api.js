@@ -7,12 +7,14 @@ const getApiBaseUrl = () => getConfig().STUDIO_BASE_URL;
 // export const getCourseDetailsApiUrl = (courseId) =>
 //   `${getApiBaseUrl()}/api/contentstore/v1/course_details/${courseId}`;
 export const getCourseDetailsApiUrl = (courseId) =>
-  `${getApiBaseUrl()}/api/ibl/v1/course_settings?course_key=${encodeURIComponent(courseId)}`;
+  `${getApiBaseUrl()}/api/ibl/v1/course_settings?course_key=${courseId}`;
 export const getCourseSettingsApiUrl = (courseId) =>
   `${getApiBaseUrl()}/api/contentstore/v1/course_settings/${courseId}`;
 export const getUploadAssetsUrl = (courseId) =>
   `${getApiBaseUrl()}/assets/${courseId}/`;
 const getMfeConfigUrl = `${getConfig().LMS_BASE_URL}/api/mfe_config/v1`;
+export const getCourseDetailsEncodedApiUrl = (courseId) =>
+  `${getApiBaseUrl()}/api/ibl/v1/course_settings?course_key=${encodeURIComponent(courseId)}`;
 
 /**
  * Get course details.
@@ -21,7 +23,7 @@ const getMfeConfigUrl = `${getConfig().LMS_BASE_URL}/api/mfe_config/v1`;
  */
 export async function getCourseDetails(courseId) {
   const { data } = await getAuthenticatedHttpClient().get(
-    `${getCourseDetailsApiUrl(courseId)}`
+    `${getCourseDetailsEncodedApiUrl(courseId)}`
   );
   return camelCaseObject(data);
 }
