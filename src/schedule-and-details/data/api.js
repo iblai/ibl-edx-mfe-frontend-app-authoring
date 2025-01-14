@@ -22,10 +22,20 @@ export const getCourseDetailsEncodedApiUrl = (courseId) =>
  * @returns {Promise<Object>}
  */
 export async function getCourseDetails(courseId) {
-  const { data } = await getAuthenticatedHttpClient().get(
-    `${getCourseDetailsEncodedApiUrl(courseId)}`
-  );
-  return camelCaseObject(data);
+  const url = getCourseDetailsEncodedApiUrl(courseId);
+  console.log('Fetching course details from:', url);
+
+  try {
+    const response = await getAuthenticatedHttpClient().get(url);
+    console.log('Course details response:', response);
+    const { data } = response;
+    console.log('Course details data:', data);
+    return camelCaseObject(data);
+  } catch (error) {
+    console.error('Error fetching course details:', error);
+    console.log('Error response:', error.response);
+    throw error;
+  }
 }
 
 /**
@@ -35,11 +45,22 @@ export async function getCourseDetails(courseId) {
  * @returns {Promise<Object>}
  */
 export async function updateCourseDetails(courseId, details) {
-  const { data } = await getAuthenticatedHttpClient().put(
-    `${getCourseDetailsApiUrl(courseId)}`,
-    convertObjectToSnakeCase(details, true)
-  );
-  return camelCaseObject(data);
+  const url = getCourseDetailsApiUrl(courseId);
+  const payload = convertObjectToSnakeCase(details, true);
+  console.log('Updating course details at:', url);
+  console.log('Update payload:', payload);
+
+  try {
+    const response = await getAuthenticatedHttpClient().put(url, payload);
+    console.log('Update response:', response);
+    const { data } = response;
+    console.log('Updated data:', data);
+    return camelCaseObject(data);
+  } catch (error) {
+    console.error('Error updating course details:', error);
+    console.log('Error response:', error.response);
+    throw error;
+  }
 }
 
 /**
