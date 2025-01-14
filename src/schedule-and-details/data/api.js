@@ -51,7 +51,7 @@ export async function updateCourseDetails(courseId, details) {
   console.log('Update payload:', payload);
 
   try {
-    const response = await getAuthenticatedHttpClient().put(url, payload);
+    const response = await getAuthenticatedHttpClient().post(url, payload);
     console.log('Update response:', response);
     const { data } = response;
     console.log('Updated data:', data);
