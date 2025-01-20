@@ -8,7 +8,7 @@ function renderField(courseSettings, param, onChange) {
     return (
       <Dropdown className="bg-white">
         <Dropdown.Toggle variant="outline-primary" id={param.fieldId}>
-          {param.config.defaultValue}
+          {courseSettings[param.config.formKey]}
         </Dropdown.Toggle>
         <Dropdown.Menu>
           {courseSettings[param.config.optionsKey]?.map((option) => (
@@ -26,7 +26,7 @@ function renderField(courseSettings, param, onChange) {
   return (
     <Form.Control
       as={param.config.asTextarea ? TextareaAutosize : "input"}
-      value={param.config.defaultValue}
+      value={courseSettings[param.config.defaultValue]}
       name={param.config.formKey}
       maxLength={param.maxLength}
       onChange={(e) => onChange(e.target.value, param.config.formKey)}
