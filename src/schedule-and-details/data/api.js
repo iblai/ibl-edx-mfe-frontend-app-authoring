@@ -14,7 +14,9 @@ export const getUploadAssetsUrl = (courseId) =>
   `${getApiBaseUrl()}/assets/${courseId}/`;
 const getMfeConfigUrl = `${getConfig().LMS_BASE_URL}/api/mfe_config/v1`;
 export const getCourseDetailsEncodedApiUrl = (courseId) =>
-  `${getApiBaseUrl()}/api/ibl/v1/course_settings?course_key=${encodeURIComponent(courseId)}`;
+  `${getApiBaseUrl()}/api/ibl/v1/course_settings?course_key=${encodeURIComponent(
+    courseId
+  )}`;
 
 /**
  * Get course details.
@@ -23,17 +25,13 @@ export const getCourseDetailsEncodedApiUrl = (courseId) =>
  */
 export async function getCourseDetails(courseId) {
   const url = getCourseDetailsEncodedApiUrl(courseId);
-  console.log('Fetching course details from:', url);
 
   try {
     const response = await getAuthenticatedHttpClient().get(url);
-    console.log('Course details response:', response);
     const { data } = response;
-    console.log('Course details data:', data);
     return camelCaseObject(data);
   } catch (error) {
-    console.error('Error fetching course details:', error);
-    console.log('Error response:', error.response);
+    console.log("Error response:", error.response);
     throw error;
   }
 }
@@ -47,18 +45,18 @@ export async function getCourseDetails(courseId) {
 export async function updateCourseDetails(courseId, details) {
   const url = getCourseDetailsApiUrl(courseId);
   const payload = convertObjectToSnakeCase(details, true);
-  console.log('Updating course details at:', url);
-  console.log('Update payload:', payload);
+  console.log("Updating course details at:", url);
+  console.log("Update payload:", payload);
 
   try {
     const response = await getAuthenticatedHttpClient().post(url, payload);
-    console.log('Update response:', response);
+    console.log("Update response:", response);
     const { data } = response;
-    console.log('Updated data:', data);
+    console.log("Updated data:", data);
     return camelCaseObject(data);
   } catch (error) {
-    console.error('Error updating course details:', error);
-    console.log('Error response:', error.response);
+    console.error("Error updating course details:", error);
+    console.log("Error response:", error.response);
     throw error;
   }
 }
