@@ -8,7 +8,7 @@ function renderField(courseSettings, param, onChange) {
     return (
       <Dropdown className="bg-white">
         <Dropdown.Toggle variant="outline-primary" id={param.fieldId}>
-          {courseSettings[param.config.formKey]}
+          {param.config.label}
         </Dropdown.Toggle>
         <Dropdown.Menu>
           {courseSettings[param.config.optionsKey]?.map((option) => (
