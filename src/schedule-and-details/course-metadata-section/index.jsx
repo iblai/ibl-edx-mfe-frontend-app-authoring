@@ -3,7 +3,7 @@ import PropTypes from "prop-types";
 import { Form, Dropdown } from "@openedx/paragon";
 import SectionSubHeader from "../../generic/section-sub-header";
 
-function renderField(courseSettings, param, onChange) {
+function renderField(courseSettings, editSettings, param, onChange) {
   if (param.type === "SelectField") {
     return (
       <Dropdown className="bg-white">
@@ -15,6 +15,7 @@ function renderField(courseSettings, param, onChange) {
             <Dropdown.Item
               key={option.value}
               onClick={() => onChange(option.value, param.config.formKey)}
+              active={editSettings[param.config.optionsKey] === option.value}
             >
               {option.label}
             </Dropdown.Item>
@@ -39,6 +40,7 @@ export const CourseMetadataSection = ({
   aboutPageEditable,
   mfeConfig,
   courseSettings,
+  editSettings,
   onChange,
 }) => {
   return (
@@ -53,7 +55,7 @@ export const CourseMetadataSection = ({
         (mfeConfig.STUDIO_COURSE_METADATA_FIELDS || []).map((param) => (
           <Form.Group className="form-group-custom" key={param.config.label}>
             <Form.Label>{param.config.label}</Form.Label>
-            {renderField(courseSettings, param, onChange)}
+            {renderField(courseSettings, editSettings, param, onChange)}
             <Form.Control.Feedback>{param.config.tip}</Form.Control.Feedback>
           </Form.Group>
         ))}
