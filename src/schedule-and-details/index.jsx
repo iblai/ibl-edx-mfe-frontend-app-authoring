@@ -144,12 +144,6 @@ const ScheduleAndDetails = ({ intl, courseId }) => {
     entranceExamMinimumScorePct,
     certificatesDisplayBehavior,
     videoThumbnailImageAssetPath,
-    subject,
-    tags,
-    topics,
-    level,
-    slug,
-    promotion,
   } = editedValues;
 
   useScrollToHashElement({ isLoading });
@@ -298,7 +292,7 @@ const ScheduleAndDetails = ({ intl, courseId }) => {
                     aboutPageEditable={aboutPageEditable}
                     mfeConfig={mfeConfig}
                     courseSettings={courseDetails}
-                    editSettings={editSettings}
+                    editedValues={editedValues}
                     onChange={handleValuesChange}
                   />
                   <IntroducingSection

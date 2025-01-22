@@ -3,7 +3,7 @@ import PropTypes from "prop-types";
 import { Form, Dropdown } from "@openedx/paragon";
 import SectionSubHeader from "../../generic/section-sub-header";
 
-function renderField(courseSettings, editSettings, param, onChange) {
+function renderField(courseSettings, editedValues, param, onChange) {
   if (param.type === "SelectField") {
     return (
       <Dropdown className="bg-white">
@@ -11,15 +11,17 @@ function renderField(courseSettings, editSettings, param, onChange) {
           {param.config.label}
         </Dropdown.Toggle>
         <Dropdown.Menu>
-          {courseSettings[param.config.optionsKey]?.map((option) => (
-            <Dropdown.Item
-              key={option.value}
-              onClick={() => onChange(option.value, param.config.formKey)}
-              active={editSettings[param.config.optionsKey] === option.value}
-            >
-              {option.label}
-            </Dropdown.Item>
-          ))}
+          {courseSettings["formChoices"][param.config.optionsKey]?.map(
+            (option) => (
+              <Dropdown.Item
+                key={option.value}
+                onClick={() => onChange(option.value, param.config.formKey)}
+                active={editedValues[param.config.optionsKey] === option.value}
+              >
+                {option.label}
+              </Dropdown.Item>
+            )
+          )}
         </Dropdown.Menu>
       </Dropdown>
     );
@@ -27,7 +29,7 @@ function renderField(courseSettings, editSettings, param, onChange) {
   return (
     <Form.Control
       as={param.config.asTextarea ? TextareaAutosize : "input"}
-      value={courseSettings[param.config.formKey]}
+      value={editedValues[param.config.formKey]}
       name={param.config.formKey}
       maxLength={param.maxLength}
       onChange={(e) => onChange(e.target.value, param.config.formKey)}
@@ -40,7 +42,7 @@ export const CourseMetadataSection = ({
   aboutPageEditable,
   mfeConfig,
   courseSettings,
-  editSettings,
+  editedValues,
   onChange,
 }) => {
   return (
@@ -55,7 +57,7 @@ export const CourseMetadataSection = ({
         (mfeConfig.STUDIO_COURSE_METADATA_FIELDS || []).map((param) => (
           <Form.Group className="form-group-custom" key={param.config.label}>
             <Form.Label>{param.config.label}</Form.Label>
-            {renderField(courseSettings, editSettings, param, onChange)}
+            {renderField(courseSettings, editedValues, param, onChange)}
             <Form.Control.Feedback>{param.config.tip}</Form.Control.Feedback>
           </Form.Group>
         ))}
