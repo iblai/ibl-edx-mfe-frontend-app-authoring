@@ -291,7 +291,7 @@ const ScheduleAndDetails = ({ intl, courseId }) => {
                   <CourseMetadataSection
                     aboutPageEditable={aboutPageEditable}
                     mfeConfig={mfeConfig}
-                    courseSettings={courseSettings}
+                    courseSettings={courseDetails}
                     onChange={handleValuesChange}
                   />
                   <IntroducingSection
