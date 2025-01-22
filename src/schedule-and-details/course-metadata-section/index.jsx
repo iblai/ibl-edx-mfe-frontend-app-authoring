@@ -26,7 +26,7 @@ function renderField(courseSettings, param, onChange) {
   return (
     <Form.Control
       as={param.config.asTextarea ? TextareaAutosize : "input"}
-      value={courseSettings[param.config.defaultValue]}
+      value={courseSettings[param.config.formKey]}
       name={param.config.formKey}
       maxLength={param.maxLength}
       onChange={(e) => onChange(e.target.value, param.config.formKey)}
