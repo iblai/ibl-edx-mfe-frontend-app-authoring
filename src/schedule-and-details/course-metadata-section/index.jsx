@@ -13,10 +13,10 @@ function renderField(courseSettings, param, onChange) {
         <Dropdown.Menu>
           {courseSettings[param.config.optionsKey]?.map((option) => (
             <Dropdown.Item
-              key={option[0]}
-              onClick={() => onChange(option[0], param.config.formKey)}
+              key={option.value}
+              onClick={() => onChange(option.value, param.config.formKey)}
             >
-              {option[1]}
+              {option.label}
             </Dropdown.Item>
           ))}
         </Dropdown.Menu>
