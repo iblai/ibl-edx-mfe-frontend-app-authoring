@@ -11,6 +11,11 @@ const messages = defineMessages({
     defaultMessage: 'Search',
     description: 'Placeholder text shown in the keyword input field when the user has not yet entered a keyword',
   },
+  clearUsageKeyToSearch: {
+    id: 'course-authoring.search-manager.clearUsageKeyToSearch',
+    defaultMessage: 'Displaying single block, clear filters to search',
+    description: 'Placeholder text shown in the keyword input field when a single block filtered by usage key is shown',
+  },
   blockTypeFilter: {
     id: 'course-authoring.search-manager.blockTypeFilter',
     defaultMessage: 'Type',
@@ -215,6 +220,26 @@ const messages = defineMessages({
     id: 'course-authoring.course-search.searchSort.mostRelevant',
     defaultMessage: 'Most Relevant',
     description: 'Label for the content search sort drop-down which sorts keyword searches by relevance',
+  },
+  publishStatusPublished: {
+    id: 'course-authoring.search-manager.publishStatus.published',
+    defaultMessage: 'Published',
+    description: 'Label for published content in the publish status filter',
+  },
+  publishStatusModified: {
+    id: 'course-authoring.search-manager.publishStatus.modified',
+    defaultMessage: 'Modified since publish',
+    description: 'Label for content modified since last publish in the publish status filter',
+  },
+  publishStatusNeverPublished: {
+    id: 'course-authoring.search-manager.publishStatus.neverPublished',
+    defaultMessage: 'Never published',
+    description: 'Label for content that has never been published in the publish status filter',
+  },
+  publishStatusFilter: {
+    id: 'course-authoring.search-manager.publishStatus.filter',
+    defaultMessage: 'Publish Status',
+    description: 'Label for the filter that allows filtering content by publish status',
   },
 });
 

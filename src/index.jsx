@@ -16,7 +16,12 @@ import { initializeHotjar } from '@edx/frontend-enterprise-hotjar';
 import { logError } from '@edx/frontend-platform/logging';
 import messages from './i18n';
 
-import { CreateLibrary, LibraryLayout } from './library-authoring';
+import {
+  ComponentPicker,
+  CreateLibrary,
+  LibraryLayout,
+  PreviewChangesEmbed,
+} from './library-authoring';
 import initializeStore from './store';
 import CourseAuthoringRoutes from './CourseAuthoringRoutes';
 import Head from './head/Head';
@@ -30,7 +35,13 @@ import { ToastProvider } from './generic/toast-context';
 import 'react-datepicker/dist/react-datepicker.css';
 import './index.scss';
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 60 * 60_000, // If cache is up to one hour old, no need to re-fetch
+    },
+  },
+});
 
 const App = () => {
   useEffect(() => {
@@ -55,6 +66,9 @@ const App = () => {
         <Route path="/libraries-v1" element={<StudioHome />} />
         <Route path="/library/create" element={<CreateLibrary />} />
         <Route path="/library/:libraryId/*" element={<LibraryLayout />} />
+        <Route path="/component-picker" element={<ComponentPicker />} />
+        <Route path="/component-picker/multiple" element={<ComponentPicker componentPickerMode="multiple" />} />
+        <Route path="/legacy/preview-changes/:usageKey" element={<PreviewChangesEmbed />} />
         <Route path="/course/:courseId/*" element={<CourseAuthoringRoutes />} />
         <Route path="/course_rerun/:courseId" element={<CourseRerun />} />
         {getConfig().ENABLE_ACCESSIBILITY_PAGE === 'true' && (
@@ -132,7 +146,7 @@ initialize({
         ENABLE_HOME_PAGE_COURSE_API_V2: process.env.ENABLE_HOME_PAGE_COURSE_API_V2 === 'true',
         ENABLE_CHECKLIST_QUALITY: process.env.ENABLE_CHECKLIST_QUALITY || 'true',
         ENABLE_GRADING_METHOD_IN_PROBLEMS: process.env.ENABLE_GRADING_METHOD_IN_PROBLEMS === 'true',
-        LIBRARY_MODE: process.env.LIBRARY_MODE || 'v1 only',
+        LIBRARY_SUPPORTED_BLOCKS: (process.env.LIBRARY_SUPPORTED_BLOCKS || 'problem,video,html').split(','),
       }, 'CourseAuthoringConfig');
     },
   },

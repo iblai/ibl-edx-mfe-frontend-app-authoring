@@ -1,27 +1,22 @@
-import {
-  render,
-  act,
-  fireEvent,
-  screen,
-} from '@testing-library/react';
 import ReactDOM from 'react-dom';
 
-import { initializeMockApp } from '@edx/frontend-platform';
-import MockAdapter from 'axios-mock-adapter';
-import { getAuthenticatedHttpClient } from '@edx/frontend-platform/auth';
-import { AppProvider } from '@edx/frontend-platform/react';
-import { IntlProvider } from '@edx/frontend-platform/i18n';
-
-import initializeStore from '../store';
+import {
+  initializeMocks,
+  fireEvent,
+  screen,
+  act,
+  render,
+} from '../testUtils';
 import { executeThunk } from '../utils';
 import { RequestStatus } from '../data/constants';
+import { getApiWaffleFlagsUrl } from '../data/api';
+import { fetchWaffleFlags } from '../data/thunks';
 import CustomPages from './CustomPages';
 import {
   generateFetchPageApiResponse,
   generateNewPageApiResponse,
   getStatusValue,
   courseId,
-  initialState,
 } from './factories/mockApiResponses';
 
 import {
@@ -37,13 +32,7 @@ let store;
 ReactDOM.createPortal = jest.fn(node => node);
 
 const renderComponent = () => {
-  render(
-    <IntlProvider locale="en">
-      <AppProvider store={store}>
-        <CustomPages courseId={courseId} />
-      </AppProvider>
-    </IntlProvider>,
-  );
+  render(<CustomPages courseId={courseId} />);
 };
 
 const mockStore = async (status) => {
@@ -62,16 +51,18 @@ const mockStore = async (status) => {
 
 describe('CustomPages', () => {
   beforeEach(async () => {
-    initializeMockApp({
-      authenticatedUser: {
-        userId: 3,
-        username: 'abc123',
-        administrator: false,
-        roles: [],
-      },
-    });
-    store = initializeStore(initialState);
-    axiosMock = new MockAdapter(getAuthenticatedHttpClient());
+    const mocks = initializeMocks();
+    store = mocks.reduxStore;
+    axiosMock = mocks.axiosMock;
+    axiosMock
+      .onGet(getApiWaffleFlagsUrl(courseId))
+      .reply(200, {
+        useNewGradingPage: true,
+        useNewCertificatesPage: true,
+        useNewScheduleDetailsPage: true,
+        useNewCourseOutlinePage: true,
+      });
+    await executeThunk(fetchWaffleFlags(courseId), store.dispatch);
   });
   it('should ', async () => {
     renderComponent();

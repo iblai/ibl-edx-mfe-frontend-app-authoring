@@ -6,6 +6,7 @@ import {
   type Query,
   type QueryClient,
 } from '@tanstack/react-query';
+import { useCallback } from 'react';
 
 import { getLibraryId } from '../../generic/key-utils';
 import {
@@ -15,10 +16,15 @@ import {
   type UpdateXBlockFieldsRequest,
   getContentLibrary,
   createLibraryBlock,
+  deleteLibraryBlock,
   getContentLibraryV2List,
   commitLibraryChanges,
   revertLibraryChanges,
   updateLibraryMetadata,
+  getLibraryTeam,
+  addLibraryTeamMember,
+  deleteLibraryTeamMember,
+  updateLibraryTeamMember,
   libraryPasteClipboard,
   getLibraryBlockMetadata,
   getXBlockFields,
@@ -27,14 +33,20 @@ import {
   getXBlockOLX,
   updateCollectionMetadata,
   type UpdateCollectionComponentsRequest,
-  updateCollectionComponents,
+  addComponentsToCollection,
   type CreateLibraryCollectionDataRequest,
   getCollectionMetadata,
   deleteCollection,
   restoreCollection,
   setXBlockOLX,
   getXBlockAssets,
+  updateComponentCollections,
+  removeComponentsFromCollection,
+  publishXBlock,
+  deleteXBlockAsset,
+  restoreLibraryBlock,
 } from './api';
+import { VersionSpec } from '../LibraryBlock';
 
 export const libraryQueryPredicate = (query: Query, libraryId: string): boolean => {
   // Invalidate all content queries related to this library.
@@ -62,6 +74,11 @@ export const libraryAuthoringQueryKeys = {
     'list',
     ...(customParams ? [customParams] : []),
   ],
+  libraryTeam: (libraryId?: string) => [
+    ...libraryAuthoringQueryKeys.all,
+    'list',
+    libraryId,
+  ],
   collection: (libraryId?: string, collectionId?: string) => [
     ...libraryAuthoringQueryKeys.all,
     libraryId,
@@ -76,7 +93,7 @@ export const xblockQueryKeys = {
    */
   xblock: (usageKey?: string) => [...xblockQueryKeys.all, usageKey],
   /** Fields (i.e. the content, display name, etc.) of an XBlock */
-  xblockFields: (usageKey: string) => [...xblockQueryKeys.xblock(usageKey), 'fields'],
+  xblockFields: (usageKey: string, version: VersionSpec = 'draft') => [...xblockQueryKeys.xblock(usageKey), 'fields', version],
   /** OLX (XML representation of the fields/content) */
   xblockOLX: (usageKey: string) => [...xblockQueryKeys.xblock(usageKey), 'OLX'],
   /** assets (static files) */
@@ -98,6 +115,9 @@ export const xblockQueryKeys = {
 export function invalidateComponentData(queryClient: QueryClient, contentLibraryId: string, usageKey: string) {
   queryClient.invalidateQueries({ queryKey: xblockQueryKeys.xblockFields(usageKey) });
   queryClient.invalidateQueries({ queryKey: xblockQueryKeys.componentMetadata(usageKey) });
+  // The description and display name etc. may have changed, so refresh everything in the library too:
+  // This might fail in case this helper is called after deleting the block.
+  queryClient.invalidateQueries({ queryKey: libraryAuthoringQueryKeys.contentLibrary(contentLibraryId) });
   queryClient.invalidateQueries({ predicate: (query) => libraryQueryPredicate(query, contentLibraryId) });
 }
 
@@ -126,6 +146,34 @@ export const useCreateLibraryBlock = () => {
   });
 };
 
+/**
+ * Use this mutation to delete a block in a library
+ */
+export const useDeleteLibraryBlock = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: deleteLibraryBlock,
+    onSettled: (_data, _error, variables) => {
+      const libraryId = getLibraryId(variables.usageKey);
+      invalidateComponentData(queryClient, libraryId, variables.usageKey);
+    },
+  });
+};
+
+/**
+ * Use this mutation to restore a deleted block in a library
+ */
+export const useRestoreLibraryBlock = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: restoreLibraryBlock,
+    onSettled: (_data, _error, variables) => {
+      const libraryId = getLibraryId(variables.usageKey);
+      invalidateComponentData(queryClient, libraryId, variables.usageKey);
+    },
+  });
+};
+
 export const useUpdateLibraryMetadata = () => {
   const queryClient = useQueryClient();
   return useMutation({
@@ -136,7 +184,7 @@ export const useUpdateLibraryMetadata = () => {
 
       const newLibraryData = {
         ...previousLibraryData,
-        title: data.title,
+        ...camelCaseObject(data),
       };
 
       queryClient.setQueryData(queryKey, newLibraryData);
@@ -187,6 +235,62 @@ export const useRevertLibraryChanges = () => {
   });
 };
 
+/**
+ * Hook to fetch a content library's team members
+ */
+export const useLibraryTeam = (libraryId: string | undefined) => (
+  useQuery({
+    queryKey: libraryAuthoringQueryKeys.libraryTeam(libraryId),
+    queryFn: () => getLibraryTeam(libraryId!),
+    enabled: libraryId !== undefined,
+  })
+);
+
+/**
+ * Hook to add a new member to a content library's team
+ */
+export const useAddLibraryTeamMember = (libraryId: string | undefined) => {
+  const queryClient = useQueryClient();
+  const queryKey = libraryAuthoringQueryKeys.libraryTeam(libraryId);
+
+  return useMutation({
+    mutationFn: addLibraryTeamMember,
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey });
+    },
+  });
+};
+
+/**
+ * Hook to delete an existing member from a content library's team
+ */
+export const useDeleteLibraryTeamMember = (libraryId: string | undefined) => {
+  const queryClient = useQueryClient();
+  const queryKey = libraryAuthoringQueryKeys.libraryTeam(libraryId);
+
+  return useMutation({
+    mutationFn: deleteLibraryTeamMember,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey });
+    },
+  });
+};
+
+/**
+ * Hook to update an existing member's access in a content library's team
+ */
+export const useUpdateLibraryTeamMember = (libraryId: string | undefined) => {
+  const queryClient = useQueryClient();
+  const queryKey = libraryAuthoringQueryKeys.libraryTeam(libraryId);
+
+  return useMutation({
+    mutationFn: updateLibraryTeamMember,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey });
+    },
+  });
+};
+
 export const useLibraryPasteClipboard = () => {
   const queryClient = useQueryClient();
   return useMutation({
@@ -198,17 +302,18 @@ export const useLibraryPasteClipboard = () => {
   });
 };
 
-export const useLibraryBlockMetadata = (usageId: string) => (
+export const useLibraryBlockMetadata = (usageId: string | undefined) => (
   useQuery({
-    queryKey: xblockQueryKeys.componentMetadata(usageId),
-    queryFn: () => getLibraryBlockMetadata(usageId),
+    queryKey: xblockQueryKeys.componentMetadata(usageId!),
+    queryFn: () => getLibraryBlockMetadata(usageId!),
+    enabled: !!usageId,
   })
 );
 
-export const useXBlockFields = (usageKey: string) => (
+export const useXBlockFields = (usageKey: string, version: VersionSpec = 'draft') => (
   useQuery({
-    queryKey: xblockQueryKeys.xblockFields(usageKey),
-    queryFn: () => getXBlockFields(usageKey),
+    queryKey: xblockQueryKeys.xblockFields(usageKey, version),
+    queryFn: () => getXBlockFields(usageKey, version),
     enabled: !!usageKey,
   })
 );
@@ -262,10 +367,10 @@ export const useCreateLibraryCollection = (libraryId: string) => {
 };
 
 /** Get the OLX source of a library component */
-export const useXBlockOLX = (usageKey: string) => (
+export const useXBlockOLX = (usageKey: string, version: VersionSpec) => (
   useQuery({
     queryKey: xblockQueryKeys.xblockOLX(usageKey),
-    queryFn: () => getXBlockOLX(usageKey),
+    queryFn: () => getXBlockOLX(usageKey, version),
     enabled: !!usageKey,
   })
 );
@@ -280,11 +385,21 @@ export const useUpdateXBlockOLX = (usageKey: string) => {
     mutationFn: (newOLX: string) => setXBlockOLX(usageKey, newOLX),
     onSuccess: (olxFromServer) => {
       queryClient.setQueryData(xblockQueryKeys.xblockOLX(usageKey), olxFromServer);
-      // Reload the other data for this component:
       invalidateComponentData(queryClient, contentLibraryId, usageKey);
-      // And the description and display name etc. may have changed, so refresh everything in the library too:
-      queryClient.invalidateQueries({ queryKey: libraryAuthoringQueryKeys.contentLibrary(contentLibraryId) });
-      queryClient.invalidateQueries({ predicate: (query) => libraryQueryPredicate(query, contentLibraryId) });
+    },
+  });
+};
+
+/**
+ * Publish changes to a library component
+ */
+export const usePublishComponent = (usageKey: string) => {
+  const queryClient = useQueryClient();
+  const contentLibraryId = getLibraryId(usageKey);
+  return useMutation({
+    mutationFn: () => publishXBlock(usageKey),
+    onSettled: () => {
+      invalidateComponentData(queryClient, contentLibraryId, usageKey);
     },
   });
 };
@@ -297,6 +412,27 @@ export const useXBlockAssets = (usageKey: string) => (
     enabled: !!usageKey,
   })
 );
+
+/** Refresh the list of assets (static files) attached to a library component */
+export const useInvalidateXBlockAssets = (usageKey: string) => {
+  const client = useQueryClient();
+  return useCallback(() => {
+    client.invalidateQueries({ queryKey: xblockQueryKeys.xblockAssets(usageKey) });
+  }, [usageKey]);
+};
+
+/**
+ * Use this mutation to delete an asset file from a library
+ */
+export const useDeleteXBlockAsset = (usageKey: string) => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (path: string) => deleteXBlockAsset(usageKey, path),
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: xblockQueryKeys.xblockAssets(usageKey) });
+    },
+  });
+};
 
 /**
  * Get the metadata for a collection in a library
@@ -328,12 +464,32 @@ export const useUpdateCollection = (libraryId: string, collectionId: string) => 
 /**
  * Use this mutation to add components to a collection in a library
  */
-export const useUpdateCollectionComponents = (libraryId?: string, collectionId?: string) => {
+export const useAddComponentsToCollection = (libraryId?: string, collectionId?: string) => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (usage_keys: string[]) => {
+    mutationFn: async (usageKeys: string[]) => {
       if (libraryId !== undefined && collectionId !== undefined) {
-        return updateCollectionComponents(libraryId, collectionId, usage_keys);
+        return addComponentsToCollection(libraryId, collectionId, usageKeys);
+      }
+      return undefined;
+    },
+    onSettled: () => {
+      if (libraryId !== undefined && collectionId !== undefined) {
+        queryClient.invalidateQueries({ predicate: (query) => libraryQueryPredicate(query, libraryId) });
+      }
+    },
+  });
+};
+
+/**
+ * Use this mutation to remove components from a collection in a library
+ */
+export const useRemoveComponentsFromCollection = (libraryId?: string, collectionId?: string) => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (usageKeys: string[]) => {
+      if (libraryId !== undefined && collectionId !== undefined) {
+        return removeComponentsFromCollection(libraryId, collectionId, usageKeys);
       }
       return undefined;
     },
@@ -368,6 +524,20 @@ export const useRestoreCollection = (libraryId: string, collectionId: string) =>
     mutationFn: async () => restoreCollection(libraryId, collectionId),
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: libraryAuthoringQueryKeys.contentLibrary(libraryId) });
+      queryClient.invalidateQueries({ predicate: (query) => libraryQueryPredicate(query, libraryId) });
+    },
+  });
+};
+
+/**
+ * Use this mutation to update collections related a component in a library
+ */
+export const useUpdateComponentCollections = (libraryId: string, usageKey: string) => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (collectionKeys: string[]) => updateComponentCollections(usageKey, collectionKeys),
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: xblockQueryKeys.componentMetadata(usageKey) });
       queryClient.invalidateQueries({ predicate: (query) => libraryQueryPredicate(query, libraryId) });
     },
   });

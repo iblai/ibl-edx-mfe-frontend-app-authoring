@@ -3,11 +3,11 @@ import { buttons, plugins } from '../../data/constants/tinyMCE';
 
 const mapToolbars = toolbars => toolbars.map(toolbar => toolbar.join(' ')).join(' | ');
 
-const pluginConfig = ({ isLibrary, placeholder, editorType }) => {
-  const image = isLibrary ? '' : plugins.image;
-  const imageTools = isLibrary ? '' : plugins.imagetools;
-  const imageUploadButton = isLibrary ? '' : buttons.imageUploadButton;
-  const editImageSettings = isLibrary ? '' : buttons.editImageSettings;
+const pluginConfig = ({ placeholder, editorType, enableImageUpload }) => {
+  const image = enableImageUpload ? plugins.image : '';
+  const imageTools = enableImageUpload ? plugins.imagetools : '';
+  const imageUploadButton = enableImageUpload ? buttons.imageUploadButton : '';
+  const editImageSettings = enableImageUpload ? buttons.editImageSettings : '';
   const codePlugin = editorType === 'text' ? plugins.code : '';
   const codeButton = editorType === 'text' ? buttons.code : '';
   const labelButton = editorType === 'question' ? buttons.customLabelButton : '';
@@ -64,16 +64,9 @@ const pluginConfig = ({ isLibrary, placeholder, editorType }) => {
         [editImageSettings],
       ]),
       quickbarsInsertToolbar: toolbar ? false : mapToolbars([
-        [buttons.undo, buttons.redo],
-        [buttons.formatSelect],
-        [buttons.bold, buttons.italic, buttons.underline, buttons.foreColor],
-        [
-          buttons.align.justify,
-          buttons.bullist,
-          buttons.numlist,
-        ],
-        [imageUploadButton, buttons.blockQuote, buttons.codeBlock],
-        [buttons.table, buttons.emoticons, buttons.charmap, buttons.removeFormat, buttons.a11ycheck],
+        // To keep from blocking the whole text input field when it's empty, this "insert" toolbar
+        // used with ExpandableTextArea is kept as minimal as we can.
+        [imageUploadButton, buttons.table],
       ]),
       quickbarsSelectionToolbar: toolbar ? false : mapToolbars([
         [buttons.undo, buttons.redo],

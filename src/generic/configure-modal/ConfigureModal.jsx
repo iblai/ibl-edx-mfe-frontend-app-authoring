@@ -166,6 +166,7 @@ const ConfigureModal = ({
         );
         break;
       case COURSE_BLOCK_NAMES.vertical.id:
+      case COURSE_BLOCK_NAMES.libraryContent.id:
       case COURSE_BLOCK_NAMES.component.id:
       // groupAccess should be {partitionId: [group1, group2]} or {} if selectedPartitionIndex === -1
         if (data.selectedPartitionIndex >= 0) {
@@ -242,10 +243,12 @@ const ConfigureModal = ({
           </Tabs>
         );
       case COURSE_BLOCK_NAMES.vertical.id:
+      case COURSE_BLOCK_NAMES.libraryContent.id:
       case COURSE_BLOCK_NAMES.component.id:
         return (
           <UnitTab
-            isXBlockComponent={COURSE_BLOCK_NAMES.component.id === category}
+            isXBlockComponent={isXBlockComponent}
+            isLibraryContent={COURSE_BLOCK_NAMES.libraryContent.id === category}
             values={values}
             setFieldValue={setFieldValue}
             showWarning={visibilityState === VisibilityTypes.STAFF_ONLY && !ancestorHasStaffLock}
@@ -260,6 +263,7 @@ const ConfigureModal = ({
   return (
     <ModalDialog
       className="configure-modal"
+      title={dialogTitle}
       size="lg"
       isOpen={isOpen}
       onClose={onClose}
@@ -365,7 +369,7 @@ ConfigureModal.propTypes = {
     supportsOnboarding: PropTypes.bool,
     showReviewRules: PropTypes.bool,
     onlineProctoringRules: PropTypes.string,
-    discussionEnabled: PropTypes.bool.isRequired,
+    discussionEnabled: PropTypes.bool,
   }).isRequired,
   isXBlockComponent: PropTypes.bool,
   isSelfPaced: PropTypes.bool.isRequired,

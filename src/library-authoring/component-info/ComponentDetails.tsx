@@ -1,19 +1,24 @@
-import { useIntl } from '@edx/frontend-platform/i18n';
+import { FormattedMessage } from '@edx/frontend-platform/i18n';
 import { Stack } from '@openedx/paragon';
 
 import AlertError from '../../generic/alert-error';
 import Loading from '../../generic/Loading';
+import { useSidebarContext } from '../common/context/SidebarContext';
 import { useLibraryBlockMetadata } from '../data/apiHooks';
 import HistoryWidget from '../generic/history-widget';
 import { ComponentAdvancedInfo } from './ComponentAdvancedInfo';
 import messages from './messages';
 
-interface ComponentDetailsProps {
-  usageKey: string;
-}
+const ComponentDetails = () => {
+  const { sidebarComponentInfo } = useSidebarContext();
 
-const ComponentDetails = ({ usageKey }: ComponentDetailsProps) => {
-  const intl = useIntl();
+  const usageKey = sidebarComponentInfo?.id;
+
+  // istanbul ignore if: this should never happen
+  if (!usageKey) {
+    throw new Error('usageKey is required');
+  }
+
   const {
     data: componentMetadata,
     isError,
@@ -33,20 +38,18 @@ const ComponentDetails = ({ usageKey }: ComponentDetailsProps) => {
     <Stack gap={3}>
       <div>
         <h3 className="h5">
-          {intl.formatMessage(messages.detailsTabUsageTitle)}
+          <FormattedMessage {...messages.detailsTabUsageTitle} />
         </h3>
-        <small>This will show the courses that use this component.</small>
+        <small><FormattedMessage {...messages.detailsTabUsagePlaceholder} /></small>
       </div>
       <hr className="w-100" />
       <div>
         <h3 className="h5">
-          {intl.formatMessage(messages.detailsTabHistoryTitle)}
+          <FormattedMessage {...messages.detailsTabHistoryTitle} />
         </h3>
-        <HistoryWidget
-          {...componentMetadata}
-        />
+        <HistoryWidget {...componentMetadata} />
       </div>
-      <ComponentAdvancedInfo usageKey={usageKey} />
+      <ComponentAdvancedInfo />
     </Stack>
   );
 };

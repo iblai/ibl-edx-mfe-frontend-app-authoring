@@ -38,3 +38,35 @@ export const getXBlockSupportMessages = (intl) => ({
     tooltip: intl.formatMessage(addComponentMessages.modalComponentSupportTooltipNotSupported),
   },
 });
+
+export const stateKeys = {
+  iframeHeight: 'iframeHeight',
+  hasLoaded: 'hasLoaded',
+  showError: 'showError',
+  windowTopOffset: 'windowTopOffset',
+};
+
+export const messageTypes = {
+  modal: 'plugin.modal',
+  resize: 'plugin.resize',
+  videoFullScreen: 'plugin.videoFullScreen',
+  refreshXBlock: 'refreshXBlock',
+  showMoveXBlockModal: 'showMoveXBlockModal',
+  completeXBlockMoving: 'completeXBlockMoving',
+  rollbackMovedXBlock: 'rollbackMovedXBlock',
+  showMultipleComponentPicker: 'showMultipleComponentPicker',
+  addSelectedComponentsToBank: 'addSelectedComponentsToBank',
+  showXBlockLibraryChangesPreview: 'showXBlockLibraryChangesPreview',
+  copyXBlock: 'copyXBlock',
+  manageXBlockAccess: 'manageXBlockAccess',
+  completeManageXBlockAccess: 'completeManageXBlockAccess',
+  deleteXBlock: 'deleteXBlock',
+  completeXBlockDeleting: 'completeXBlockDeleting',
+  duplicateXBlock: 'duplicateXBlock',
+  completeXBlockDuplicating: 'completeXBlockDuplicating',
+  newXBlockEditor: 'newXBlockEditor',
+  toggleCourseXBlockDropdown: 'toggleCourseXBlockDropdown',
+  addXBlock: 'addXBlock',
+  scrollToXBlock: 'scrollToXBlock',
+  handleViewXBlockContent: 'handleViewXBlockContent',
+};

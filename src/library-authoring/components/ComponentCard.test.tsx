@@ -5,10 +5,11 @@ import {
   waitFor,
   initializeMocks,
 } from '../../testUtils';
-import { LibraryProvider } from '../common/context';
+import { LibraryProvider } from '../common/context/LibraryContext';
 import { getClipboardUrl } from '../../generic/data/api';
 import { ContentHit } from '../../search-manager';
 import ComponentCard from './ComponentCard';
+import { PublishStatus } from '../../search-manager/data/api';
 
 const contentHit: ContentHit = {
   id: '1',
@@ -19,11 +20,13 @@ const contentHit: ContentHit = {
   org: 'org1',
   breadcrumbs: [{ displayName: 'Demo Lib' }],
   displayName: 'Text Display Name',
+  description: 'This is a text: ID=1',
   formatted: {
     displayName: 'Text Display Formated Name',
     content: {
       htmlContent: 'This is a text: ID=1',
     },
+    description: 'This is a text: ID=1',
   },
   tags: {
     level0: ['1', '2', '3'],
@@ -32,6 +35,8 @@ const contentHit: ContentHit = {
   created: 1722434322294,
   modified: 1722434322294,
   lastPublished: null,
+  collections: {},
+  publishStatus: PublishStatus.Published,
 };
 
 const clipboardBroadcastChannelMock = {
@@ -43,7 +48,11 @@ const clipboardBroadcastChannelMock = {
 
 const libraryId = 'lib:org1:Demo_Course';
 const render = () => baseRender(<ComponentCard contentHit={contentHit} />, {
-  extraWrapper: ({ children }) => <LibraryProvider libraryId={libraryId}>{ children }</LibraryProvider>,
+  extraWrapper: ({ children }) => (
+    <LibraryProvider libraryId={libraryId}>
+      { children }
+    </LibraryProvider>
+  ),
 });
 
 describe('<ComponentCard />', () => {

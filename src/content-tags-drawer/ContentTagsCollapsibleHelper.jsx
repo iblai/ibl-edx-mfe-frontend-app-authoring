@@ -6,11 +6,11 @@ import { cloneDeep } from 'lodash';
 import { useContentTaxonomyTagsUpdater } from './data/apiHooks';
 import { ContentTagsDrawerContext } from './common/context';
 
-/** @typedef {import("../taxonomy/data/types.mjs").TaxonomyData} TaxonomyData */
-/** @typedef {import("./data/types.mjs").Tag} ContentTagData */
+/** @typedef {import("../taxonomy/data/types.js").TaxonomyData} TaxonomyData */
+/** @typedef {import("./data/types.js").Tag} ContentTagData */
 /** @typedef {import("./ContentTagsCollapsible").TagTreeEntry} TagTreeEntry */
-/** @typedef {import("./data/types.mjs").StagedTagData} StagedTagData */
-/** @typedef {import("./data/types.mjs").UpdateTagsData} UpdateTagsData */
+/** @typedef {import("./data/types.js").StagedTagData} StagedTagData */
+/** @typedef {import("./data/types.js").UpdateTagsData} UpdateTagsData */
 
 /**
  * Util function that sorts the keys of a tree in alphabetical order.
@@ -116,7 +116,7 @@ const useContentTagsCollapsibleHelper = (
   // State to keep track of the staged tags (and along with ancestors) that should be removed
   const [stagedTagsToRemove, setStagedTagsToRemove] = React.useState(/** @type string[] */([]));
 
-  // State to keep track of the global tags (stagged and feched) that should be removed
+  // State to keep track of the global tags (staged and fetched) that should be removed
   const [globalTagsToRemove, setGlobalTagsToRemove] = React.useState(/** @type string[] */([]));
 
   // Handles the removal of staged content tags based on what was removed
@@ -140,7 +140,7 @@ const useContentTagsCollapsibleHelper = (
         // A new tag has been removed
         removeGlobalStagedContentTag(id, tag);
       } else if (contentTags.some(t => t.value === tag)) {
-        // A feched tag has been removed
+        // A fetched tag has been removed
         addRemovedContentTag(id, tag);
       }
     });
@@ -157,7 +157,7 @@ const useContentTagsCollapsibleHelper = (
     explicitStaged.forEach((tag) => {
       if (globalStagedRemovedContentTags[id]
           && globalStagedRemovedContentTags[id].includes(tag.value)) {
-        // A feched tag that has been removed has been added again
+        // A fetched tag that has been removed has been added again
         deleteRemovedContentTag(id, tag.value);
       } else {
         // New tag added

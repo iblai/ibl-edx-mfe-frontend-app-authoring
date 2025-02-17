@@ -1,5 +1,7 @@
 import fetchMock from 'fetch-mock-jest';
 import { cloneDeep } from 'lodash';
+import MockAdapter from 'axios-mock-adapter/types';
+
 import {
   fireEvent,
   initializeMocks,
@@ -17,6 +19,11 @@ import {
 import { mockContentSearchConfig, mockGetBlockTypes } from '../../search-manager/data/api.mock';
 import { mockBroadcastChannel, mockClipboardEmpty } from '../../generic/data/api.mock';
 import { LibraryLayout } from '..';
+import { ContentTagsDrawer } from '../../content-tags-drawer';
+import { getLibraryCollectionComponentApiUrl } from '../data/api';
+
+let axiosMock: MockAdapter;
+let mockShowToast;
 
 mockClipboardEmpty.applyMock();
 mockGetCollectionMetadata.applyMock();
@@ -30,17 +37,20 @@ const searchEndpoint = 'http://mock.meilisearch.local/multi-search';
 const path = '/library/:libraryId/*';
 const libraryTitle = mockContentLibrary.libraryData.title;
 const mockCollection = {
-  collectionId: mockResult.results[2].hits[0].block_id,
+  collectionId: mockResult.results[0].hits[5].block_id,
   collectionNeverLoads: mockGetCollectionMetadata.collectionIdLoading,
   collectionNoComponents: 'collection-no-components',
   collectionEmpty: mockGetCollectionMetadata.collectionIdError,
 };
 
 const { title } = mockGetCollectionMetadata.collectionData;
+jest.mock('../../content-tags-drawer/ContentTagsDrawer', () => jest.fn(() => <div>Mocked ContentTagsDrawer</div>));
 
 describe('<LibraryCollectionPage />', () => {
   beforeEach(() => {
-    initializeMocks();
+    const mocks = initializeMocks();
+    axiosMock = mocks.axiosMock;
+    mockShowToast = mocks.mockShowToast;
     fetchMock.mockReset();
 
     // The Meilisearch client-side API uses fetch, not Axios.
@@ -52,23 +62,21 @@ describe('<LibraryCollectionPage />', () => {
       // because otherwise Instantsearch will update the UI and change the query,
       // leading to unexpected results in the test cases.
       mockResultCopy.results[0].query = query;
-      mockResultCopy.results[2].query = query;
       // And fake the required '_formatted' fields; it contains the highlighting <mark>...</mark> around matched words
       // eslint-disable-next-line no-underscore-dangle, no-param-reassign
       mockResultCopy.results[0]?.hits.forEach((hit) => { hit._formatted = { ...hit }; });
-      const collectionQueryId = requestData?.queries[0]?.filter?.[3]?.split('collections.key = "')[1].split('"')[0];
+      const collectionQueryId = requestData?.queries[0]?.filter?.[2]?.split('collections.key = "')[1].split('"')[0];
       switch (collectionQueryId) {
         case mockCollection.collectionNeverLoads:
           return new Promise<any>(() => {});
         case mockCollection.collectionEmpty:
-          mockResultCopy.results[2].hits = [];
-          mockResultCopy.results[2].estimatedTotalHits = 0;
+          mockResultCopy.results[0].hits = [];
+          mockResultCopy.results[0].totalHits = 0;
           break;
         case mockCollection.collectionNoComponents:
           mockResultCopy.results[0].hits = [];
-          mockResultCopy.results[0].estimatedTotalHits = 0;
+          mockResultCopy.results[0].totalHits = 0;
           mockResultCopy.results[1].facetDistribution.block_type = {};
-          mockResultCopy.results[2].hits[0].num_children = 0;
           break;
         default:
           break;
@@ -142,7 +150,7 @@ describe('<LibraryCollectionPage />', () => {
     expect(screen.queryByText('Read Only')).not.toBeInTheDocument();
   });
 
-  it('shows an empty read-only library collection, without a new button', async () => {
+  it('shows an empty read-only library collection, with the new button disabled', async () => {
     // Use a library mock that is read-only:
     const libraryId = mockContentLibrary.libraryIdReadOnly;
     // Update search mock so it returns no results:
@@ -153,7 +161,8 @@ describe('<LibraryCollectionPage />', () => {
     // Show in the collection page and in the sidebar
     expect(screen.getAllByText('This collection is currently empty.').length).toEqual(2);
 
-    expect(screen.queryByRole('button', { name: /new/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /new/i })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /new/i })).toBeDisabled();
     expect(screen.getByText('Read Only')).toBeInTheDocument();
   });
 
@@ -171,7 +180,7 @@ describe('<LibraryCollectionPage />', () => {
     // should not be impacted by the search
     await waitFor(() => { expect(fetchMock).toHaveFetchedTimes(2, searchEndpoint, 'post'); });
 
-    expect(screen.queryByText('No matching components found in this collections.')).toBeInTheDocument();
+    expect(screen.queryByText('No matching components found in this collection.')).toBeInTheDocument();
   });
 
   it('should open and close new content sidebar', async () => {
@@ -192,6 +201,8 @@ describe('<LibraryCollectionPage />', () => {
   });
 
   it('should open collection Info by default', async () => {
+    const expectedCollectionUsageKey = 'lib-collection:Axim:TEST:my-first-collection';
+
     await renderLibraryCollectionPage();
 
     expect(await screen.findByText('All Collections')).toBeInTheDocument();
@@ -201,9 +212,18 @@ describe('<LibraryCollectionPage />', () => {
 
     expect(screen.getByText('Manage')).toBeInTheDocument();
     expect(screen.getByText('Details')).toBeInTheDocument();
+    expect(screen.getByText('Mocked ContentTagsDrawer')).toBeInTheDocument();
+    expect(ContentTagsDrawer).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: expectedCollectionUsageKey,
+      }),
+      {},
+    );
   });
 
   it('should close and open Collection Info', async () => {
+    const expectedCollectionUsageKey = 'lib-collection:Axim:TEST:my-first-collection';
+
     await renderLibraryCollectionPage();
 
     expect(await screen.findByText('All Collections')).toBeInTheDocument();
@@ -211,17 +231,24 @@ describe('<LibraryCollectionPage />', () => {
     expect((await screen.findAllByText(title))[0]).toBeInTheDocument();
     expect((await screen.findAllByText(title))[1]).toBeInTheDocument();
 
-    // Open by default; close the library info sidebar
-    const closeButton = screen.getByRole('button', { name: /close/i });
-    fireEvent.click(closeButton);
+    const collectionInfoBtn = screen.getByRole('button', { name: /collection info/i });
+
+    // Open by default; click 'Collection info' button to close
+    fireEvent.click(collectionInfoBtn);
     expect(screen.queryByText('Draft')).not.toBeInTheDocument();
     expect(screen.queryByText('(Never Published)')).not.toBeInTheDocument();
 
-    // Open library info sidebar with 'Library info' button
-    const collectionInfoBtn = screen.getByRole('button', { name: /collection info/i });
+    // Open library info sidebar with 'Collection info' button
     fireEvent.click(collectionInfoBtn);
     expect(screen.getByText('Manage')).toBeInTheDocument();
     expect(screen.getByText('Details')).toBeInTheDocument();
+    expect(screen.getByText('Mocked ContentTagsDrawer')).toBeInTheDocument();
+    expect(ContentTagsDrawer).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: expectedCollectionUsageKey,
+      }),
+      {},
+    );
   });
 
   it('sorts collection components', async () => {
@@ -301,7 +328,6 @@ describe('<LibraryCollectionPage />', () => {
     expect(mockResult0.display_name).toStrictEqual(displayName);
     await renderLibraryCollectionPage();
 
-    // Click on the first component. It should appear twice, in both "Recently Modified" and "Components"
     fireEvent.click((await screen.findAllByText(displayName))[0]);
 
     const sidebar = screen.getByTestId('library-sidebar');
@@ -323,5 +349,31 @@ describe('<LibraryCollectionPage />', () => {
     fireEvent.click(filterButton);
 
     expect(screen.getByText(/no matching components/i)).toBeInTheDocument();
+  });
+
+  it('should remove component from collection and hides sidebar', async () => {
+    const url = getLibraryCollectionComponentApiUrl(
+      mockContentLibrary.libraryId,
+      mockCollection.collectionId,
+    );
+    axiosMock.onDelete(url).reply(204);
+    const displayName = 'Introduction to Testing';
+    await renderLibraryCollectionPage();
+
+    // open sidebar
+    fireEvent.click(await screen.findByText(displayName));
+    await waitFor(() => expect(screen.queryByTestId('library-sidebar')).toBeInTheDocument());
+
+    const menuBtns = await screen.findAllByRole('button', { name: 'Component actions menu' });
+    // open menu
+    fireEvent.click(menuBtns[0]);
+
+    fireEvent.click(await screen.findByText('Remove from collection'));
+    await waitFor(() => {
+      expect(axiosMock.history.delete.length).toEqual(1);
+      expect(mockShowToast).toHaveBeenCalledWith('Component successfully removed');
+    });
+    // Should close sidebar as component was removed
+    await waitFor(() => expect(screen.queryByTestId('library-sidebar')).not.toBeInTheDocument());
   });
 });

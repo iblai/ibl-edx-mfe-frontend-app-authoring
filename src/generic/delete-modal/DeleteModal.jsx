@@ -3,11 +3,11 @@ import {
   ActionRow,
   Button,
   AlertModal,
-  StatefulButton,
 } from '@openedx/paragon';
 import { useIntl } from '@edx/frontend-platform/i18n';
 
 import messages from './messages';
+import LoadingButton from '../loading-button';
 
 const DeleteModal = ({
   category,
@@ -17,12 +17,14 @@ const DeleteModal = ({
   title,
   description,
   variant,
-  btnState,
+  btnLabel,
+  icon,
 }) => {
   const intl = useIntl();
 
   const modalTitle = title || intl.formatMessage(messages.title, { category });
   const modalDescription = description || intl.formatMessage(messages.description, { category });
+  const defaultBtnLabel = btnLabel || intl.formatMessage(messages.deleteButton);
 
   return (
     <AlertModal
@@ -30,6 +32,7 @@ const DeleteModal = ({
       isOpen={isOpen}
       onClose={close}
       variant={variant}
+      icon={icon}
       footerNode={(
         <ActionRow>
           <Button
@@ -42,18 +45,13 @@ const DeleteModal = ({
           >
             {intl.formatMessage(messages.cancelButton)}
           </Button>
-          <StatefulButton
-            data-testid="delete-confirm-button"
-            state={btnState}
-            onClick={(e) => {
+          <LoadingButton
+            onClick={async (e) => {
               e.preventDefault();
               e.stopPropagation();
-              onDeleteSubmit();
+              await onDeleteSubmit();
             }}
-            labels={{
-              default: intl.formatMessage(messages.deleteButton),
-              pending: intl.formatMessage(messages.pendingDeleteButton),
-            }}
+            label={defaultBtnLabel}
           />
         </ActionRow>
       )}
@@ -68,7 +66,8 @@ DeleteModal.defaultProps = {
   title: '',
   description: '',
   variant: 'default',
-  btnState: 'default',
+  btnLabel: '',
+  icon: null,
 };
 
 DeleteModal.propTypes = {
@@ -77,9 +76,13 @@ DeleteModal.propTypes = {
   category: PropTypes.string,
   onDeleteSubmit: PropTypes.func.isRequired,
   title: PropTypes.string,
-  description: PropTypes.string,
+  description: PropTypes.oneOfType([
+    PropTypes.element,
+    PropTypes.string,
+  ]),
   variant: PropTypes.string,
-  btnState: PropTypes.string,
+  btnLabel: PropTypes.string,
+  icon: PropTypes.elementType,
 };
 
 export default DeleteModal;

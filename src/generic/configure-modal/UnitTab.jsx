@@ -11,6 +11,7 @@ import messages from './messages';
 
 const UnitTab = ({
   isXBlockComponent,
+  isLibraryContent,
   values,
   setFieldValue,
   showWarning,
@@ -61,7 +62,9 @@ const UnitTab = ({
       )}
       {userPartitionInfo.selectablePartitions.length > 0 && (
         <Form.Group controlId="groupSelect">
-          <h4 className="mt-3"><FormattedMessage {...messages.unitAccess} /></h4>
+          <h4 className="mt-3">
+            <FormattedMessage {...messages[isLibraryContent ? 'libraryContentAccess' : 'unitAccess']} />
+          </h4>
           <hr />
           <Form.Label as="legend" className="font-weight-bold">
             <FormattedMessage {...messages.restrictAccessTo} />
@@ -130,31 +133,38 @@ const UnitTab = ({
           )}
         </Form.Group>
       )}
-      <h4 className="mt-4"><FormattedMessage {...messages.discussionEnabledSectionTitle} /></h4>
-      <hr />
-      <Form.Checkbox checked={discussionEnabled} onChange={handleDiscussionChange}>
-        <FormattedMessage {...messages.discussionEnabledCheckbox} />
-      </Form.Checkbox>
-      <p className="x-small font-weight-bold"><FormattedMessage {...messages.discussionEnabledDescription} /></p>
+      {!isXBlockComponent && (
+        <>
+          <h4 className="mt-4"><FormattedMessage {...messages.discussionEnabledSectionTitle} /></h4>
+          <hr />
+          <Form.Checkbox checked={discussionEnabled} onChange={handleDiscussionChange}>
+            <FormattedMessage {...messages.discussionEnabledCheckbox} />
+          </Form.Checkbox>
+          <p className="x-small font-weight-bold"><FormattedMessage {...messages.discussionEnabledDescription} /></p>
+        </>
+      )}
     </>
   );
 };
 
 UnitTab.defaultProps = {
   isXBlockComponent: false,
+  isLibraryContent: false,
 };
 
 UnitTab.propTypes = {
   isXBlockComponent: PropTypes.bool,
+  isLibraryContent: PropTypes.bool,
   values: PropTypes.shape({
     isVisibleToStaffOnly: PropTypes.bool.isRequired,
-    discussionEnabled: PropTypes.bool.isRequired,
+    discussionEnabled: PropTypes.bool,
     selectedPartitionIndex: PropTypes.oneOfType([
       PropTypes.string,
       PropTypes.number,
     ]).isRequired,
     selectedGroups: PropTypes.oneOfType([
-      PropTypes.string,
+      PropTypes.arrayOf(PropTypes.string),
+      PropTypes.array,
     ]),
   }).isRequired,
   setFieldValue: PropTypes.func.isRequired,

@@ -13,6 +13,7 @@ import ImageUploadModal from '../ImageUploadModal';
 import SourceCodeModal from '../SourceCodeModal';
 import * as hooks from './hooks';
 import './customTinyMcePlugins/embedIframePlugin';
+import { isLibraryV1Key } from '../../../generic/key-utils';
 
 export { prepareEditorRef } from './hooks';
 
@@ -42,8 +43,10 @@ const TinyMceWidget = ({
   editorContentHtml, // editorContent in html form
   learningContextId,
   images,
+  enableImageUpload,
   isLibrary,
   onChange,
+  staticRootUrl,
   ...editorConfig
 }) => {
   const { isImgOpen, openImgModal, closeImgModal } = hooks.imgModalToggle();
@@ -53,7 +56,7 @@ const TinyMceWidget = ({
 
   return (
     <>
-      {!isLibrary && (
+      {enableImageUpload && (
         <ImageUploadModal
           isOpen={isImgOpen}
           close={closeImgModal}
@@ -61,6 +64,7 @@ const TinyMceWidget = ({
           images={imagesRef}
           editorType={editorType}
           lmsEndpointUrl={getConfig().LMS_BASE_URL}
+          isLibrary
           {...imageSelection}
         />
       )}
@@ -81,10 +85,11 @@ const TinyMceWidget = ({
             openSourceCodeModal,
             editorType,
             editorRef,
-            isLibrary,
+            enableImageUpload: isLibraryV1Key(learningContextId) ? false : enableImageUpload,
             learningContextId,
             images: imagesRef,
             editorContentHtml,
+            staticRootUrl,
             ...imageSelection,
             ...editorConfig,
           })
@@ -104,6 +109,7 @@ TinyMceWidget.defaultProps = {
   disabled: false,
   editorContentHtml: undefined,
   updateContent: undefined,
+  enableImageUpload: true,
   onChange: () => ({}),
   ...editorConfigDefaultProps,
 };
@@ -119,6 +125,7 @@ TinyMceWidget.propTypes = {
   disabled: PropTypes.bool,
   editorContentHtml: PropTypes.string,
   updateContent: PropTypes.func,
+  enableImageUpload: PropTypes.bool,
   onChange: PropTypes.func,
   ...editorConfigPropTypes,
 };

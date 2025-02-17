@@ -1,82 +1,83 @@
-import React, { useEffect } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Helmet } from 'react-helmet';
 import classNames from 'classnames';
 import { StudioFooter } from '@edx/frontend-component-footer';
 import { useIntl } from '@edx/frontend-platform/i18n';
 import {
+  ActionRow,
+  Alert,
   Badge,
+  Breadcrumb,
   Button,
   Container,
+  Icon,
   Stack,
   Tab,
   Tabs,
 } from '@openedx/paragon';
-import { Add, InfoOutline } from '@openedx/paragon/icons';
-import {
-  Routes, Route, useLocation, useNavigate, useSearchParams,
-} from 'react-router-dom';
+import { Add, ArrowBack, InfoOutline } from '@openedx/paragon/icons';
+import { Link } from 'react-router-dom';
 
 import Loading from '../generic/Loading';
 import SubHeader from '../generic/sub-header/SubHeader';
 import Header from '../header';
 import NotFoundAlert from '../generic/NotFoundAlert';
+import { useStudioHome } from '../studio-home/hooks';
 import {
   ClearFiltersButton,
   FilterByBlockType,
   FilterByTags,
+  FilterByPublished,
   SearchContextProvider,
   SearchKeywordsField,
   SearchSortWidget,
+  TypesFilterData,
 } from '../search-manager';
-import LibraryComponents from './components/LibraryComponents';
-import LibraryCollections from './collections/LibraryCollections';
-import LibraryHome from './LibraryHome';
-import { useContentLibrary } from './data/apiHooks';
+import LibraryContent from './LibraryContent';
 import { LibrarySidebar } from './library-sidebar';
-import { SidebarBodyComponentId, useLibraryContext } from './common/context';
+import { useComponentPickerContext } from './common/context/ComponentPickerContext';
+import { useLibraryContext } from './common/context/LibraryContext';
+import { SidebarBodyComponentId, useSidebarContext } from './common/context/SidebarContext';
+import { ContentType, useLibraryRoutes } from './routes';
+
 import messages from './messages';
 
-enum TabList {
-  home = '',
-  components = 'components',
-  collections = 'collections',
-}
-
-interface HeaderActionsProps {
-  canEditLibrary: boolean;
-}
-
-const HeaderActions = ({ canEditLibrary }: HeaderActionsProps) => {
+const HeaderActions = () => {
   const intl = useIntl();
+
+  const { readOnly } = useLibraryContext();
+
   const {
     openAddContentSidebar,
-    openInfoSidebar,
+    openLibrarySidebar,
     closeLibrarySidebar,
-    sidebarBodyComponent,
-  } = useLibraryContext();
+    sidebarComponentInfo,
+  } = useSidebarContext();
 
-  if (!canEditLibrary) {
-    return null;
-  }
+  const { componentPickerMode } = useComponentPickerContext();
 
-  const infoSidebarIsOpen = () => (
-    sidebarBodyComponent === SidebarBodyComponentId.Info
-  );
+  const infoSidebarIsOpen = sidebarComponentInfo?.type === SidebarBodyComponentId.Info;
 
-  const handleOnClickInfoSidebar = () => {
-    if (infoSidebarIsOpen()) {
+  const { navigateTo } = useLibraryRoutes();
+  const handleOnClickInfoSidebar = useCallback(() => {
+    if (infoSidebarIsOpen) {
       closeLibrarySidebar();
     } else {
-      openInfoSidebar();
+      openLibrarySidebar();
     }
-  };
+
+    if (!componentPickerMode) {
+      // Reset URL to library home
+      navigateTo({ componentId: '', collectionId: '' });
+    }
+  }, [navigateTo, sidebarComponentInfo, closeLibrarySidebar, openLibrarySidebar]);
 
   return (
     <div className="header-actions">
       <Button
         className={classNames('mr-1', {
-          'normal-border': !infoSidebarIsOpen(),
-          'open-border': infoSidebarIsOpen(),
+          'normal-border': !infoSidebarIsOpen,
+          'open-border': infoSidebarIsOpen,
         })}
         iconBefore={InfoOutline}
         variant="outline-primary rounded-0"
@@ -84,26 +85,33 @@ const HeaderActions = ({ canEditLibrary }: HeaderActionsProps) => {
       >
         {intl.formatMessage(messages.libraryInfoButton)}
       </Button>
-      <Button
-        className="ml-1"
-        iconBefore={Add}
-        variant="primary rounded-0"
-        onClick={openAddContentSidebar}
-        disabled={!canEditLibrary}
-      >
-        {intl.formatMessage(messages.newContentButton)}
-      </Button>
+      {!componentPickerMode && (
+        <Button
+          className="ml-1"
+          iconBefore={Add}
+          variant="primary rounded-0"
+          onClick={openAddContentSidebar}
+          disabled={readOnly}
+        >
+          {intl.formatMessage(messages.newContentButton)}
+        </Button>
+      )}
     </div>
   );
 };
 
-const SubHeaderTitle = ({ title, canEditLibrary }: { title: string, canEditLibrary: boolean }) => {
+export const SubHeaderTitle = ({ title }: { title: string }) => {
   const intl = useIntl();
+
+  const { readOnly } = useLibraryContext();
+  const { componentPickerMode } = useComponentPickerContext();
+
+  const showReadOnlyBadge = readOnly && !componentPickerMode;
 
   return (
     <Stack direction="vertical">
       {title}
-      { !canEditLibrary && (
+      {showReadOnlyBadge && (
         <div>
           <Badge variant="primary" style={{ fontSize: '50%' }}>
             {intl.formatMessage(messages.readOnlyBadge)}
@@ -114,110 +122,164 @@ const SubHeaderTitle = ({ title, canEditLibrary }: { title: string, canEditLibra
   );
 };
 
-const LibraryAuthoringPage = () => {
+interface LibraryAuthoringPageProps {
+  returnToLibrarySelection?: () => void,
+}
+
+const LibraryAuthoringPage = ({ returnToLibrarySelection }: LibraryAuthoringPageProps) => {
   const intl = useIntl();
-  const location = useLocation();
-  const navigate = useNavigate();
 
-  const { libraryId } = useLibraryContext();
-  const { data: libraryData, isLoading } = useContentLibrary(libraryId);
-
-  const currentPath = location.pathname.split('/').pop();
-  const activeKey = (currentPath && currentPath in TabList) ? TabList[currentPath] : TabList.home;
   const {
-    sidebarBodyComponent,
-    openInfoSidebar,
+    isLoadingPage: isLoadingStudioHome,
+    isFailedLoadingPage: isFailedLoadingStudioHome,
+    librariesV2Enabled,
+  } = useStudioHome();
+
+  const { componentPickerMode, restrictToLibrary } = useComponentPickerContext();
+  const {
+    libraryId,
+    libraryData,
+    isLoadingLibraryData,
+    showOnlyPublished,
+    componentId,
+    collectionId,
   } = useLibraryContext();
+  const { openInfoSidebar, sidebarComponentInfo } = useSidebarContext();
+
+  const { insideCollections, insideComponents, navigateTo } = useLibraryRoutes();
+
+  // The activeKey determines the currently selected tab.
+  const getActiveKey = () => {
+    if (componentPickerMode) {
+      return ContentType.home;
+    }
+    if (insideCollections) {
+      return ContentType.collections;
+    }
+    if (insideComponents) {
+      return ContentType.components;
+    }
+    return ContentType.home;
+  };
+  const [activeKey, setActiveKey] = useState<ContentType>(getActiveKey);
 
   useEffect(() => {
-    openInfoSidebar();
+    if (!componentPickerMode) {
+      openInfoSidebar(componentId, collectionId);
+    }
   }, []);
 
-  const [searchParams] = useSearchParams();
-
-  if (isLoading) {
+  if (isLoadingLibraryData) {
     return <Loading />;
+  }
+
+  if (!isLoadingStudioHome && (!librariesV2Enabled || isFailedLoadingStudioHome)) {
+    return (
+      <Alert variant="danger">
+        {intl.formatMessage(messages.librariesV2DisabledError)}
+      </Alert>
+    );
   }
 
   if (!libraryData) {
     return <NotFoundAlert />;
   }
 
-  const handleTabChange = (key: string) => {
-    navigate({
-      pathname: key,
-      search: searchParams.toString(),
-    });
+  const handleTabChange = (key: ContentType) => {
+    setActiveKey(key);
+    if (!componentPickerMode) {
+      navigateTo({ contentType: key });
+    }
   };
+
+  const breadcumbs = componentPickerMode && !restrictToLibrary ? (
+    <Breadcrumb
+      links={[
+        {
+          label: '',
+          to: '',
+        },
+        {
+          label: intl.formatMessage(messages.returnToLibrarySelection),
+          onClick: returnToLibrarySelection,
+        },
+      ]}
+      spacer={<Icon src={ArrowBack} size="sm" />}
+      linkAs={Link}
+    />
+  ) : undefined;
+
+  const extraFilter = [`context_key = "${libraryId}"`];
+  if (showOnlyPublished) {
+    extraFilter.push('last_published IS NOT NULL');
+  }
+
+  const activeTypeFilters = {
+    components: 'NOT type = "collection"',
+    collections: 'type = "collection"',
+  };
+  if (activeKey !== ContentType.home) {
+    extraFilter.push(activeTypeFilters[activeKey]);
+  }
+
+  // Disable filtering by block/problem type when viewing the Collections tab.
+  const overrideTypesFilter = insideCollections ? new TypesFilterData() : undefined;
 
   return (
     <div className="d-flex">
       <div className="flex-grow-1">
         <Helmet><title>{libraryData.title} | {process.env.SITE_NAME}</title></Helmet>
-        <Header
-          number={libraryData.slug}
-          title={libraryData.title}
-          org={libraryData.org}
-          contextId={libraryId}
-          isLibrary
-          containerProps={{
-            size: undefined,
-          }}
-        />
+        {!componentPickerMode && (
+          <Header
+            number={libraryData.slug}
+            title={libraryData.title}
+            org={libraryData.org}
+            contextId={libraryId}
+            isLibrary
+            containerProps={{
+              size: undefined,
+            }}
+          />
+        )}
         <Container className="px-4 mt-4 mb-5 library-authoring-page">
           <SearchContextProvider
-            extraFilter={`context_key = "${libraryId}"`}
+            extraFilter={extraFilter}
+            overrideTypesFilter={overrideTypesFilter}
           >
             <SubHeader
-              title={<SubHeaderTitle title={libraryData.title} canEditLibrary={libraryData.canEditLibrary} />}
-              subtitle={intl.formatMessage(messages.headingSubtitle)}
-              headerActions={<HeaderActions canEditLibrary={libraryData.canEditLibrary} />}
+              title={<SubHeaderTitle title={libraryData.title} />}
+              subtitle={!componentPickerMode ? intl.formatMessage(messages.headingSubtitle) : undefined}
+              breadcrumbs={breadcumbs}
+              headerActions={<HeaderActions />}
+              hideBorder
             />
-            <SearchKeywordsField className="w-50" />
-            <div className="d-flex mt-3 align-items-center">
-              <FilterByTags />
-              <FilterByBlockType />
-              <ClearFiltersButton />
-              <div className="flex-grow-1" />
-              <SearchSortWidget />
-            </div>
             <Tabs
               variant="tabs"
               activeKey={activeKey}
               onSelect={handleTabChange}
               className="my-3"
             >
-              <Tab eventKey={TabList.home} title={intl.formatMessage(messages.homeTab)} />
-              <Tab eventKey={TabList.components} title={intl.formatMessage(messages.componentsTab)} />
-              <Tab eventKey={TabList.collections} title={intl.formatMessage(messages.collectionsTab)} />
+              <Tab eventKey={ContentType.home} title={intl.formatMessage(messages.homeTab)} />
+              <Tab eventKey={ContentType.components} title={intl.formatMessage(messages.componentsTab)} />
+              <Tab eventKey={ContentType.collections} title={intl.formatMessage(messages.collectionsTab)} />
             </Tabs>
-            <Routes>
-              <Route
-                path={TabList.home}
-                element={(
-                  <LibraryHome tabList={TabList} handleTabChange={handleTabChange} />
-                )}
-              />
-              <Route
-                path={TabList.components}
-                element={<LibraryComponents variant="full" />}
-              />
-              <Route
-                path={TabList.collections}
-                element={<LibraryCollections variant="full" />}
-              />
-              <Route
-                path="*"
-                element={<NotFoundAlert />}
-              />
-            </Routes>
+            <ActionRow className="my-3">
+              <SearchKeywordsField className="mr-3" />
+              <FilterByTags />
+              {!insideCollections && <FilterByBlockType />}
+              <FilterByPublished />
+              <ClearFiltersButton />
+              <ActionRow.Spacer />
+              <SearchSortWidget />
+            </ActionRow>
+            <LibraryContent contentType={activeKey} />
           </SearchContextProvider>
         </Container>
-        <StudioFooter containerProps={{ size: undefined }} />
+        {!componentPickerMode && <StudioFooter containerProps={{ size: undefined }} />}
       </div>
-      { !!sidebarBodyComponent && (
+      {!!sidebarComponentInfo?.type && (
         <div className="library-authoring-sidebar box-shadow-left-1 bg-white" data-testid="library-sidebar">
-          <LibrarySidebar library={libraryData} />
+          <LibrarySidebar />
         </div>
       )}
     </div>

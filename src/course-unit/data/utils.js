@@ -3,7 +3,6 @@ import { camelCaseObject } from '@edx/frontend-platform';
 import { NOTIFICATION_MESSAGES } from '../../constants';
 import { PUBLISH_TYPES } from '../constants';
 
-// eslint-disable-next-line import/prefer-default-export
 export function normalizeCourseSectionVerticalData(metadata) {
   const data = camelCaseObject(metadata);
   return {
@@ -11,9 +10,9 @@ export function normalizeCourseSectionVerticalData(metadata) {
     sequence: {
       id: data.subsectionLocation,
       title: data.xblock.displayName,
-      unitIds: data.xblockInfo.ancestorInfo.ancestors[0].childInfo.children.map((item) => item.id),
+      unitIds: data.xblockInfo.ancestorInfo?.ancestors[0].childInfo.children.map((item) => item.id),
     },
-    units: data.xblockInfo.ancestorInfo.ancestors[0].childInfo.children.map((unit) => ({
+    units: data.xblockInfo.ancestorInfo?.ancestors[0].childInfo.children.map((unit) => ({
       id: unit.id,
       sequenceId: data.subsectionLocation,
       bookmarked: unit.bookmarked,

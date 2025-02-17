@@ -68,6 +68,7 @@ const CourseOutline = ({ courseId }) => {
     sectionsList,
     isCustomRelativeDatesActive,
     isLoading,
+    isLoadingDenied,
     isReIndexShow,
     showSuccessAlert,
     isSectionsExpanded,
@@ -125,7 +126,8 @@ const CourseOutline = ({ courseId }) => {
   const [toastMessage, setToastMessage] = useState(/** @type{null|string} */ (null));
 
   useEffect(() => {
-    if (location.hash === '#export-tags') {
+    // Wait for the course data to load before exporting tags.
+    if (courseId && courseName && location.hash === '#export-tags') {
       setToastMessage(intl.formatMessage(messages.exportTagsCreatingToastMessage));
       getTagsExportFile(courseId, courseName).then(() => {
         setToastMessage(intl.formatMessage(messages.exportTagsSuccessToastMessage));
@@ -136,7 +138,7 @@ const CourseOutline = ({ courseId }) => {
       // Delete `#export-tags` from location
       window.location.href = '#';
     }
-  }, [location]);
+  }, [location, courseId, courseName]);
 
   const [sections, setSections] = useState(sectionsList);
 
@@ -229,6 +231,27 @@ const CourseOutline = ({ courseId }) => {
       <Row className="m-0 mt-4 justify-content-center">
         <LoadingSpinner />
       </Row>
+    );
+  }
+
+  if (isLoadingDenied) {
+    return (
+      <Container size="xl" className="px-4 mt-4">
+        <PageAlerts
+          courseId={courseId}
+          notificationDismissUrl={notificationDismissUrl}
+          handleDismissNotification={handleDismissNotification}
+          discussionsSettings={discussionsSettings}
+          discussionsIncontextFeedbackUrl={discussionsIncontextFeedbackUrl}
+          discussionsIncontextLearnmoreUrl={discussionsIncontextLearnmoreUrl}
+          deprecatedBlocksInfo={deprecatedBlocksInfo}
+          proctoringErrors={proctoringErrors}
+          mfeProctoredExamSettingsUrl={mfeProctoredExamSettingsUrl}
+          advanceSettingsUrl={advanceSettingsUrl}
+          savingStatus={savingStatus}
+          errors={errors}
+        />
+      </Container>
     );
   }
 

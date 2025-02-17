@@ -6,6 +6,21 @@ const messages = defineMessages({
     defaultMessage: 'Collection',
     description: 'Content of button to create a Collection.',
   },
+  libraryContentButton: {
+    id: 'course-authoring.library-authoring.add-content.buttons.library-content',
+    defaultMessage: 'Existing Library Content',
+    description: 'Content of button to add existing library content to a collection.',
+  },
+  addToCollectionButton: {
+    id: 'course-authoring.library-authoring.add-content.buttons.library-content.add-to-collection',
+    defaultMessage: 'Add to Collection',
+    description: 'Button to add library content to a collection.',
+  },
+  selectedComponents: {
+    id: 'course-authoring.library-authoring.add-content.selected-components',
+    defaultMessage: '{count, plural, one {# Selected Component} other {# Selected Components}}',
+    description: 'Title for selected components in library.',
+  },
   textTypeButton: {
     id: 'course-authoring.library-authoring.add-content.buttons.types.text',
     defaultMessage: 'Text',
@@ -49,7 +64,20 @@ const messages = defineMessages({
   errorCreateMessage: {
     id: 'course-authoring.library-authoring.add-content.error.text',
     defaultMessage: 'There was an error creating the content.',
-    description: 'Message when creation of content in library is on error',
+    description: 'Message when creation of content in library is on error.',
+  },
+  errorCreateMessageWithDetail: {
+    id: 'course-authoring.library-authoring.add-content.error.text-detail',
+    defaultMessage: 'There was an error creating the content: {detail}',
+    description: (
+      'Message when creation of content in library is on error.'
+      + ' The {detail} text provides more information about the error.'
+    ),
+  },
+  successAssociateComponentMessage: {
+    id: 'course-authoring.library-authoring.associate-collection-content.success.text',
+    defaultMessage: 'Content linked successfully.',
+    description: 'Message when linking of content to a collection in library is success',
   },
   errorAssociateComponentMessage: {
     id: 'course-authoring.library-authoring.associate-collection-content.error.text',
@@ -71,10 +99,23 @@ const messages = defineMessages({
     defaultMessage: 'There was an error pasting the content.',
     description: 'Message when pasting clipboard in library errors',
   },
+  errorPasteClipboardMessageWithDetail: {
+    id: 'course-authoring.library-authoring.paste-clipboard.error.text-detail',
+    defaultMessage: 'There was an error pasting the content: {detail}',
+    description: (
+      'Message when pasting clipboard in library errors.'
+      + ' The {detail} text provides more information about the error.'
+    ),
+  },
   pastingClipboardMessage: {
     id: 'course-authoring.library-authoring.paste-clipboard.loading.text',
     defaultMessage: 'Pasting content from clipboard...',
     description: 'Message when in process of pasting content in library',
+  },
+  unsupportedBlockPasteClipboardMessage: {
+    id: 'course-authoring.library-authoring.paste-clipboard.unsupportedblock-error.text',
+    defaultMessage: 'Libraries do not support this type of content yet.',
+    description: 'Message when unsupported block is pasted in library',
   },
 });
 

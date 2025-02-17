@@ -22,6 +22,7 @@ jest.mock('../EditorContainer', () => 'EditorContainer');
 
 jest.mock('./hooks', () => ({
   getContent: jest.fn(args => ({ getContent: args })),
+  isDirty: jest.fn(args => ({ isDirty: args })),
   nullMethod: jest.fn().mockName('hooks.nullMethod'),
 }));
 
@@ -59,6 +60,7 @@ jest.mock('../../data/redux', () => ({
       showRawEditor: jest.fn(state => ({ showRawEditor: state })),
       images: jest.fn(state => ({ images: state })),
       isLibrary: jest.fn(state => ({ isLibrary: state })),
+      blockId: jest.fn(state => ({ blockId: state })),
       learningContextId: jest.fn(state => ({ learningContextId: state })),
     },
     requests: {

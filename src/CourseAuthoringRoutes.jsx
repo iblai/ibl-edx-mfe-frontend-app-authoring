@@ -17,9 +17,10 @@ import ScheduleAndDetails from './schedule-and-details';
 import { GradingSettings } from './grading-settings';
 import CourseTeam from './course-team/CourseTeam';
 import { CourseUpdates } from './course-updates';
-import { CourseUnit } from './course-unit';
+import { CourseUnit, IframeProvider } from './course-unit';
 import { Certificates } from './certificates';
 import CourseExportPage from './export-page/CourseExportPage';
+import CourseOptimizerPage from './optimizer-page/CourseOptimizerPage';
 import CourseImportPage from './import-page/CourseImportPage';
 import { DECODED_ROUTES } from './constants';
 import CourseChecklist from './course-checklist';
@@ -79,7 +80,7 @@ const CourseAuthoringRoutes = () => {
           <Route
             key={path}
             path={path}
-            element={<PageWrap><CourseUnit courseId={courseId} /></PageWrap>}
+            element={<PageWrap><IframeProvider><CourseUnit courseId={courseId} /></IframeProvider></PageWrap>}
           />
         ))}
         <Route
@@ -117,6 +118,10 @@ const CourseAuthoringRoutes = () => {
         <Route
           path="export"
           element={<PageWrap><CourseExportPage courseId={courseId} /></PageWrap>}
+        />
+        <Route
+          path="optimizer"
+          element={<PageWrap><CourseOptimizerPage courseId={courseId} /></PageWrap>}
         />
         <Route
           path="checklists"

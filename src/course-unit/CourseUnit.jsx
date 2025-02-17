@@ -1,14 +1,17 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect } from 'react';
 import PropTypes from 'prop-types';
 import { useSelector } from 'react-redux';
 import { useParams } from 'react-router-dom';
-import { Container, Layout, Stack } from '@openedx/paragon';
+import {
+  Container, Layout, Stack, Button, TransitionReplace,
+} from '@openedx/paragon';
 import { getConfig } from '@edx/frontend-platform';
 import { useIntl, injectIntl } from '@edx/frontend-platform/i18n';
-import { Warning as WarningIcon } from '@openedx/paragon/icons';
-import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
+import {
+  Warning as WarningIcon,
+  CheckCircle as CheckCircleIcon,
+} from '@openedx/paragon/icons';
 
-import DraggableList from '../editors/sharedComponents/DraggableList';
 import { getProcessingNotification } from '../generic/processing-notification/data/selectors';
 import SubHeader from '../generic/sub-header/SubHeader';
 import { RequestStatus } from '../data/constants';
@@ -20,18 +23,20 @@ import { SavingErrorAlert } from '../generic/saving-error-alert';
 import ConnectionErrorAlert from '../generic/ConnectionErrorAlert';
 import Loading from '../generic/Loading';
 import AddComponent from './add-component/AddComponent';
-import CourseXBlock from './course-xblock/CourseXBlock';
 import HeaderTitle from './header-title/HeaderTitle';
 import Breadcrumbs from './breadcrumbs/Breadcrumbs';
 import HeaderNavigations from './header-navigations/HeaderNavigations';
 import Sequence from './course-sequence';
 import Sidebar from './sidebar';
-import { useCourseUnit } from './hooks';
+import { useCourseUnit, useLayoutGrid } from './hooks';
 import messages from './messages';
 import PublishControls from './sidebar/PublishControls';
 import LocationInfo from './sidebar/LocationInfo';
 import TagsSidebarControls from '../content-tags-drawer/tags-sidebar-controls';
 import { PasteNotificationAlert } from './clipboard';
+import XBlockContainerIframe from './xblock-container-iframe';
+import MoveModal from './move-modal';
+import PreviewLibraryXBlockChanges from './preview-changes';
 
 const CourseUnit = ({ courseId }) => {
   const { blockId } = useParams();
@@ -40,10 +45,13 @@ const CourseUnit = ({ courseId }) => {
     isLoading,
     sequenceId,
     unitTitle,
+    unitCategory,
     errorMessage,
     sequenceStatus,
     savingStatus,
     isTitleEditFormOpen,
+    isUnitVerticalType,
+    isUnitLibraryType,
     staticFileNotices,
     currentlyVisibleToStudents,
     unitXBlockActions,
@@ -56,20 +64,20 @@ const CourseUnit = ({ courseId }) => {
     handleCreateNewCourseXBlock,
     handleConfigureSubmit,
     courseVerticalChildren,
-    handleXBlockDragAndDrop,
     canPasteComponent,
+    isMoveModalOpen,
+    openMoveModal,
+    closeMoveModal,
+    movedXBlockParams,
+    handleRollbackMovedXBlock,
+    handleCloseXBlockMovedAlert,
+    handleNavigateToTargetUnit,
   } = useCourseUnit({ courseId, blockId });
-
-  const initialXBlocksData = useMemo(() => courseVerticalChildren.children ?? [], [courseVerticalChildren.children]);
-  const [unitXBlocks, setUnitXBlocks] = useState(initialXBlocksData);
+  const layoutGrid = useLayoutGrid(unitCategory, isUnitLibraryType);
 
   useEffect(() => {
     document.title = getPageHeadTitle('', unitTitle);
   }, [unitTitle]);
-
-  useEffect(() => {
-    setUnitXBlocks(courseVerticalChildren.children);
-  }, [courseVerticalChildren.children]);
 
   const {
     isShow: isShowProcessingNotification,
@@ -88,16 +96,44 @@ const CourseUnit = ({ courseId }) => {
     );
   }
 
-  const finalizeXBlockOrder = () => (newXBlocks) => {
-    handleXBlockDragAndDrop(newXBlocks.map(xBlock => xBlock.id), () => {
-      setUnitXBlocks(initialXBlocksData);
-    });
-  };
-
   return (
     <>
       <Container size="xl" className="course-unit px-4">
         <section className="course-unit-container mb-4 mt-5">
+          <TransitionReplace>
+            {movedXBlockParams.isSuccess ? (
+              <AlertMessage
+                key="xblock-moved-alert"
+                data-testid="xblock-moved-alert"
+                show={movedXBlockParams.isSuccess}
+                variant="success"
+                icon={CheckCircleIcon}
+                title={movedXBlockParams.isUndo
+                  ? intl.formatMessage(messages.alertMoveCancelTitle)
+                  : intl.formatMessage(messages.alertMoveSuccessTitle)}
+                description={movedXBlockParams.isUndo
+                  ? intl.formatMessage(messages.alertMoveCancelDescription, { title: movedXBlockParams.title })
+                  : intl.formatMessage(messages.alertMoveSuccessDescription, { title: movedXBlockParams.title })}
+                aria-hidden={movedXBlockParams.isSuccess}
+                dismissible
+                actions={movedXBlockParams.isUndo ? null : [
+                  <Button
+                    onClick={handleRollbackMovedXBlock}
+                    key="xblock-moved-alert-undo-move-button"
+                  >
+                    {intl.formatMessage(messages.undoMoveButton)}
+                  </Button>,
+                  <Button
+                    onClick={handleNavigateToTargetUnit}
+                    key="xblock-moved-alert-new-location-button"
+                  >
+                    {intl.formatMessage(messages.newLocationButton)}
+                  </Button>,
+                ]}
+                onClose={handleCloseXBlockMovedAlert}
+              />
+            ) : null}
+          </TransitionReplace>
           <SubHeader
             hideBorder
             title={(
@@ -110,28 +146,28 @@ const CourseUnit = ({ courseId }) => {
               />
             )}
             breadcrumbs={(
-              <Breadcrumbs />
+              <Breadcrumbs
+                courseId={courseId}
+                parentUnitId={sequenceId}
+              />
             )}
             headerActions={(
               <HeaderNavigations
+                unitCategory={unitCategory}
                 headerNavigationsActions={headerNavigationsActions}
               />
             )}
           />
-          <Sequence
-            courseId={courseId}
-            sequenceId={sequenceId}
-            unitId={blockId}
-            handleCreateNewCourseXBlock={handleCreateNewCourseXBlock}
-            showPasteUnit={showPasteUnit}
-          />
-          <Layout
-            lg={[{ span: 8 }, { span: 4 }]}
-            md={[{ span: 8 }, { span: 4 }]}
-            sm={[{ span: 8 }, { span: 3 }]}
-            xs={[{ span: 9 }, { span: 3 }]}
-            xl={[{ span: 9 }, { span: 3 }]}
-          >
+          {isUnitVerticalType && (
+            <Sequence
+              courseId={courseId}
+              sequenceId={sequenceId}
+              unitId={blockId}
+              handleCreateNewCourseXBlock={handleCreateNewCourseXBlock}
+              showPasteUnit={showPasteUnit}
+            />
+          )}
+          <Layout {...layoutGrid}>
             <Layout.Element>
               {currentlyVisibleToStudents && (
                 <AlertMessage
@@ -147,63 +183,51 @@ const CourseUnit = ({ courseId }) => {
                   courseId={courseId}
                 />
               )}
-              <Stack className="mb-4 course-unit__xblocks">
-                <DraggableList
-                  itemList={unitXBlocks}
-                  setState={setUnitXBlocks}
-                  updateOrder={finalizeXBlockOrder}
-                >
-                  <SortableContext
-                    id="root"
-                    items={unitXBlocks}
-                    strategy={verticalListSortingStrategy}
-                  >
-                    {unitXBlocks.map(({
-                      name, id, blockType: type, shouldScroll, userPartitionInfo, validationMessages,
-                    }) => (
-                      <CourseXBlock
-                        id={id}
-                        key={id}
-                        title={name}
-                        type={type}
-                        blockId={blockId}
-                        validationMessages={validationMessages}
-                        shouldScroll={shouldScroll}
-                        handleConfigureSubmit={handleConfigureSubmit}
-                        unitXBlockActions={unitXBlockActions}
-                        data-testid="course-xblock"
-                        userPartitionInfo={userPartitionInfo}
-                      />
-                    ))}
-                  </SortableContext>
-                </DraggableList>
-              </Stack>
-              <AddComponent
+              <XBlockContainerIframe
+                courseId={courseId}
                 blockId={blockId}
-                handleCreateNewCourseXBlock={handleCreateNewCourseXBlock}
+                unitXBlockActions={unitXBlockActions}
+                courseVerticalChildren={courseVerticalChildren.children}
+                handleConfigureSubmit={handleConfigureSubmit}
               />
-              {showPasteXBlock && canPasteComponent && (
+              {isUnitVerticalType && (
+                <AddComponent
+                  blockId={blockId}
+                  handleCreateNewCourseXBlock={handleCreateNewCourseXBlock}
+                />
+              )}
+              {showPasteXBlock && canPasteComponent && isUnitVerticalType && (
                 <PasteComponent
                   clipboardData={sharedClipboardData}
                   onClick={handleCreateNewCourseXBlock}
                   text={intl.formatMessage(messages.pasteButtonText)}
                 />
               )}
+              <MoveModal
+                isOpenModal={isMoveModalOpen}
+                openModal={openMoveModal}
+                closeModal={closeMoveModal}
+                courseId={courseId}
+              />
+              <PreviewLibraryXBlockChanges />
             </Layout.Element>
             <Layout.Element>
               <Stack gap={3}>
-                <Sidebar data-testid="course-unit-sidebar">
-                  <PublishControls blockId={blockId} />
-                </Sidebar>
-                {getConfig().ENABLE_TAGGING_TAXONOMY_PAGES === 'true'
-                && (
-                  <Sidebar className="tags-sidebar">
-                    <TagsSidebarControls />
-                  </Sidebar>
+                {isUnitVerticalType && (
+                  <>
+                    <Sidebar data-testid="course-unit-sidebar">
+                      <PublishControls blockId={blockId} />
+                    </Sidebar>
+                    {getConfig().ENABLE_TAGGING_TAXONOMY_PAGES === 'true' && (
+                      <Sidebar className="tags-sidebar">
+                        <TagsSidebarControls />
+                      </Sidebar>
+                    )}
+                    <Sidebar data-testid="course-unit-location-sidebar">
+                      <LocationInfo />
+                    </Sidebar>
+                  </>
                 )}
-                <Sidebar data-testid="course-unit-location-sidebar">
-                  <LocationInfo />
-                </Sidebar>
               </Stack>
             </Layout.Element>
           </Layout>

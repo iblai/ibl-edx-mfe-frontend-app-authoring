@@ -6,6 +6,7 @@ import { getConfig } from '@edx/frontend-platform';
 
 import { copyToClipboard } from '../generic/data/thunks';
 import { getSavingStatus as getGenericSavingStatus } from '../generic/data/selectors';
+import { getWaffleFlags } from '../data/selectors';
 import { RequestStatus } from '../data/constants';
 import { COURSE_BLOCK_NAMES } from './constants';
 import {
@@ -58,6 +59,7 @@ import {
 const useCourseOutline = ({ courseId }) => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
+  const waffleFlags = useSelector(getWaffleFlags);
 
   const {
     reindexLink,
@@ -112,7 +114,7 @@ const useCourseOutline = ({ courseId }) => {
   };
 
   const getUnitUrl = (locator) => {
-    if (getConfig().ENABLE_UNIT_PAGE === 'true') {
+    if (getConfig().ENABLE_UNIT_PAGE === 'true' && waffleFlags.useNewUnitPage) {
       return `/course/${courseId}/container/${locator}`;
     }
     return `${getConfig().STUDIO_BASE_URL}/container/${locator}`;
@@ -120,7 +122,7 @@ const useCourseOutline = ({ courseId }) => {
 
   const openUnitPage = (locator) => {
     const url = getUnitUrl(locator);
-    if (getConfig().ENABLE_UNIT_PAGE === 'true') {
+    if (getConfig().ENABLE_UNIT_PAGE === 'true' && waffleFlags.useNewUnitPage) {
       navigate(url);
     } else {
       window.location.assign(url);
@@ -300,6 +302,7 @@ const useCourseOutline = ({ courseId }) => {
     sectionsList,
     isCustomRelativeDatesActive,
     isLoading: outlineIndexLoadingStatus === RequestStatus.IN_PROGRESS,
+    isLoadingDenied: outlineIndexLoadingStatus === RequestStatus.DENIED,
     isReIndexShow: Boolean(reindexLink),
     showSuccessAlert,
     isDisabledReindexButton,
@@ -358,5 +361,4 @@ const useCourseOutline = ({ courseId }) => {
   };
 };
 
-// eslint-disable-next-line import/prefer-default-export
 export { useCourseOutline };

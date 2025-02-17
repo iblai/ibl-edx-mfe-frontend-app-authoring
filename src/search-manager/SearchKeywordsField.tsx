@@ -7,9 +7,15 @@ import { useSearchContext } from './SearchManager';
 /**
  * The "main" input field where users type in search keywords. The search happens as they type (no need to press enter).
  */
-const SearchKeywordsField: React.FC<{ className?: string, placeholder?: string }> = (props) => {
+const SearchKeywordsField: React.FC<{
+  className?: string,
+  placeholder?: string,
+  autoFocus?: boolean,
+}> = (props) => {
   const intl = useIntl();
-  const { searchKeywords, setSearchKeywords } = useSearchContext();
+  const { searchKeywords, setSearchKeywords, usageKey } = useSearchContext();
+  const defaultPlaceholder = usageKey ? messages.clearUsageKeyToSearch : messages.inputPlaceholder;
+  const { placeholder = intl.formatMessage(defaultPlaceholder) } = props;
 
   return (
     <SearchField.Advanced
@@ -18,13 +24,12 @@ const SearchKeywordsField: React.FC<{ className?: string, placeholder?: string }
       onClear={() => setSearchKeywords('')}
       value={searchKeywords}
       className={props.className}
+      disabled={!!usageKey}
     >
       <SearchField.Label />
       <SearchField.Input
-        autoFocus
-        placeholder={props.placeholder ? props.placeholder : intl.formatMessage(
-          messages.inputPlaceholder,
-        )}
+        autoFocus={Boolean(props.autoFocus)}
+        placeholder={placeholder}
       />
       <SearchField.ClearButton />
       <SearchField.SubmitButton />

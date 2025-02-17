@@ -8,45 +8,21 @@ import { extractOrgFromContentId, languageExportId } from './utils';
 import messages from './messages';
 import { ContentTagsDrawerSheetContext } from './common/context';
 
-/** @typedef {import("./data/types.mjs").Tag} ContentTagData */
-/** @typedef {import("./data/types.mjs").StagedTagData} StagedTagData */
-/** @typedef {import("./data/types.mjs").TagsInTaxonomy} TagsInTaxonomy */
+/** @typedef {import("./data/types.js").Tag} ContentTagData */
+/** @typedef {import("./data/types.js").StagedTagData} StagedTagData */
+/** @typedef {import("./data/types.js").TagsInTaxonomy} TagsInTaxonomy */
+/** @typedef {import("./common/context").ContentTagsDrawerContextData} ContentTagsDrawerContextData */
 
 /**
- * Handles the context and all the underlying logic for the ContentTagsDrawer component
+ * Helper hook for *creating* a `ContentTagsDrawerContext`.
+ * Handles the context and all the underlying logic for the ContentTagsDrawer component.
+ *
+ * To *use* the context, just use `useContext(ContentTagsDrawerContext)`
  * @param {string} contentId
- * @returns {{
- *     stagedContentTags: Record<number, StagedTagData[]>,
- *     addStagedContentTag: (taxonomyId: number, addedTag: StagedTagData) => void,
- *     removeStagedContentTag: (taxonomyId: number, tagValue: string) => void,
- *     removeGlobalStagedContentTag: (taxonomyId: number, tagValue: string) => void,
- *     addRemovedContentTag: (taxonomyId: number, tagValue: string) => void,
- *     deleteRemovedContentTag: (taxonomyId: number, tagValue: string) => void,
- *     setStagedTags: (taxonomyId: number, tagsList: StagedTagData[]) => void,
- *     globalStagedContentTags: Record<number, StagedTagData[]>,
- *     globalStagedRemovedContentTags: Record<number, string>,
- *     setGlobalStagedContentTags: Function,
- *     commitGlobalStagedTags: () => void,
- *     commitGlobalStagedTagsStatus: string,
- *     isContentDataLoaded: boolean,
- *     isContentTaxonomyTagsLoaded: boolean,
- *     isTaxonomyListLoaded: boolean,
- *     contentName: string,
- *     tagsByTaxonomy: TagsInTaxonomy[],
- *     isEditMode: boolean,
- *     toEditMode: () => void,
- *     toReadMode: () => void,
- *     collapsibleStates: Record<number, boolean>,
- *     openCollapsible: (taxonomyId: number) => void,
- *     closeCollapsible: (taxonomyId: number) => void,
- *     toastMessage: string | undefined,
- *     showToastAfterSave: () => void,
- *     closeToast: () => void,
- *     setCollapsibleToInitalState: () => void,
- *     otherTaxonomies: TagsInTaxonomy[],
- * }}
+ * @param {boolean} canTagObject
+ * @returns {ContentTagsDrawerContextData}
  */
-const useContentTagsDrawerContext = (contentId) => {
+export const useCreateContentTagsDrawerContext = (contentId, canTagObject) => {
   const intl = useIntl();
   const org = extractOrgFromContentId(contentId);
 
@@ -58,9 +34,9 @@ const useContentTagsDrawerContext = (contentId) => {
   const [stagedContentTags, setStagedContentTags] = React.useState({});
   // When a staged tags on a taxonomy is commitet then is saved on this map.
   const [globalStagedContentTags, setGlobalStagedContentTags] = React.useState({});
-  // This stores feched tags deleted by the user.
+  // This stores fetched tags deleted by the user.
   const [globalStagedRemovedContentTags, setGlobalStagedRemovedContentTags] = React.useState({});
-  // Merges feched tags, global staged tags and global removed staged tags
+  // Merges fetched tags, global staged tags and global removed staged tags
   const [tagsByTaxonomy, setTagsByTaxonomy] = React.useState(/** @type TagsInTaxonomy[] */ ([]));
   // Other taxonomies that the user doesn't have permissions
   const [otherTaxonomies, setOtherTaxonomies] = React.useState(/** @type TagsInTaxonomy[] */ ([]));
@@ -79,8 +55,8 @@ const useContentTagsDrawerContext = (contentId) => {
   } = useContentTaxonomyTagsData(contentId);
   const { data: taxonomyListData, isSuccess: isTaxonomyListLoaded } = useTaxonomyList(org);
 
-  // Tags feched from database
-  const { fechedTaxonomies, fechedOtherTaxonomies } = React.useMemo(() => {
+  // Tags fetched from database
+  const { fetchedTaxonomies, fetchedOtherTaxonomies } = React.useMemo(() => {
     const sortTaxonomies = (taxonomiesList) => {
       const taxonomiesWithData = taxonomiesList.filter(
         (t) => t.contentTags.length !== 0,
@@ -115,6 +91,7 @@ const useContentTagsDrawerContext = (contentId) => {
       // Initialize list of content tags in taxonomies to populate
       const taxonomiesList = taxonomyListData.results.map((taxonomy) => ({
         ...taxonomy,
+        canTagObject: taxonomy.canTagObject && canTagObject,
         contentTags: /** @type {ContentTagData[]} */([]),
       }));
 
@@ -149,13 +126,13 @@ const useContentTagsDrawerContext = (contentId) => {
       );
 
       return {
-        fechedTaxonomies: sortTaxonomies(filteredTaxonomies),
-        fechedOtherTaxonomies: otherTaxonomiesList,
+        fetchedTaxonomies: sortTaxonomies(filteredTaxonomies),
+        fetchedOtherTaxonomies: otherTaxonomiesList,
       };
     }
     return {
-      fechedTaxonomies: [],
-      fechedOtherTaxonomies: [],
+      fetchedTaxonomies: [],
+      fetchedOtherTaxonomies: [],
     };
   }, [taxonomyListData, contentTaxonomyTagsData]);
 
@@ -230,28 +207,28 @@ const useContentTagsDrawerContext = (contentId) => {
 
   const openAllCollapsible = React.useCallback(() => {
     const updatedState = {};
-    fechedTaxonomies.forEach((taxonomy) => {
+    fetchedTaxonomies.forEach((taxonomy) => {
       updatedState[taxonomy.id] = true;
     });
-    fechedOtherTaxonomies.forEach((taxonomy) => {
+    fetchedOtherTaxonomies.forEach((taxonomy) => {
       updatedState[taxonomy.id] = true;
     });
     setColapsibleStates(updatedState);
-  }, [fechedTaxonomies, setColapsibleStates]);
+  }, [fetchedTaxonomies, setColapsibleStates]);
 
   // Set initial state of collapsible based on content tags
   const setCollapsibleToInitalState = React.useCallback(() => {
     const updatedState = {};
-    fechedTaxonomies.forEach((taxonomy) => {
+    fetchedTaxonomies.forEach((taxonomy) => {
       // Taxonomy with content tags must be open
       updatedState[taxonomy.id] = taxonomy.contentTags.length !== 0;
     });
-    fechedOtherTaxonomies.forEach((taxonomy) => {
+    fetchedOtherTaxonomies.forEach((taxonomy) => {
       // Taxonomy with content tags must be open
       updatedState[taxonomy.id] = taxonomy.contentTags.length !== 0;
     });
     setColapsibleStates(updatedState);
-  }, [fechedTaxonomies, setColapsibleStates]);
+  }, [fetchedTaxonomies, setColapsibleStates]);
 
   // Changes the drawer mode to edit
   const toEditMode = React.useCallback(() => {
@@ -331,7 +308,7 @@ const useContentTagsDrawerContext = (contentId) => {
   const closeToast = React.useCallback(() => setToastMessage(undefined), [setToastMessage]);
 
   let contentName = '';
-  if (isContentDataLoaded) {
+  if (isContentDataLoaded && contentData) {
     if ('displayName' in contentData) {
       contentName = contentData.displayName;
     } else {
@@ -339,14 +316,14 @@ const useContentTagsDrawerContext = (contentId) => {
     }
   }
 
-  // Updates `tagsByTaxonomy` merged feched tags, global staged tags
+  // Updates `tagsByTaxonomy` merged fetched tags, global staged tags
   // and global removed staged tags.
   React.useEffect(() => {
-    const mergedTags = cloneDeep(fechedTaxonomies).reduce((acc, obj) => (
+    const mergedTags = cloneDeep(fetchedTaxonomies).reduce((acc, obj) => (
       { ...acc, [obj.id]: obj }
     ), {});
 
-    const mergedOtherTaxonomies = cloneDeep(fechedOtherTaxonomies).reduce((acc, obj) => (
+    const mergedOtherTaxonomies = cloneDeep(fetchedOtherTaxonomies).reduce((acc, obj) => (
       { ...acc, [obj.id]: obj }
     ), {});
 
@@ -355,10 +332,10 @@ const useContentTagsDrawerContext = (contentId) => {
         // TODO test this
         // Filter out applied tags that should become implicit because a child tag was committed
         const stagedLineages = globalStagedContentTags[taxonomyId].map((t) => t.lineage.slice(0, -1)).flat();
-        const fechedTags = mergedTags[taxonomyId].contentTags.filter((t) => !stagedLineages.includes(t.value));
+        const fetchedTags = mergedTags[taxonomyId].contentTags.filter((t) => !stagedLineages.includes(t.value));
 
         mergedTags[taxonomyId].contentTags = [
-          ...fechedTags,
+          ...fetchedTags,
           ...globalStagedContentTags[taxonomyId],
         ];
       }
@@ -377,8 +354,8 @@ const useContentTagsDrawerContext = (contentId) => {
     });
 
     // It is constructed this way to maintain the order
-    // of the list `fechedTaxonomies`
-    const mergedTagsArray = fechedTaxonomies.map(obj => mergedTags[obj.id]);
+    // of the list `fetchedTaxonomies`
+    const mergedTagsArray = fetchedTaxonomies.map(obj => mergedTags[obj.id]);
 
     setTagsByTaxonomy(mergedTagsArray);
     setOtherTaxonomies(Object.values(mergedOtherTaxonomies));
@@ -408,8 +385,8 @@ const useContentTagsDrawerContext = (contentId) => {
       }
     }
   }, [
-    fechedTaxonomies,
-    fechedOtherTaxonomies,
+    fetchedTaxonomies,
+    fetchedOtherTaxonomies,
     globalStagedContentTags,
     globalStagedRemovedContentTags,
   ]);
@@ -463,5 +440,3 @@ const useContentTagsDrawerContext = (contentId) => {
     otherTaxonomies,
   };
 };
-
-export default useContentTagsDrawerContext;

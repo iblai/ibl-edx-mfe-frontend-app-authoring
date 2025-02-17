@@ -113,6 +113,7 @@ const useCourseTeam = ({ courseId }) => {
     courseTeamUsers,
     currentUserEmail,
     isLoading: loadingCourseTeamStatus === RequestStatus.IN_PROGRESS,
+    isLoadingDenied: loadingCourseTeamStatus === RequestStatus.DENIED,
     isSingleAdmin,
     isFormVisible,
     isAllowActions,
@@ -135,5 +136,4 @@ const useCourseTeam = ({ courseId }) => {
   };
 };
 
-// eslint-disable-next-line import/prefer-default-export
 export { useCourseTeam };

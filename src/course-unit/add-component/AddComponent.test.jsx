@@ -1,6 +1,7 @@
+/* eslint-disable react/prop-types */
 import MockAdapter from 'axios-mock-adapter';
 import {
-  render, waitFor, within,
+  act, render, screen, waitFor, within,
 } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
@@ -17,20 +18,56 @@ import { courseSectionVerticalMock } from '../__mocks__';
 import { COMPONENT_TYPES } from '../../generic/block-type-utils/constants';
 import AddComponent from './AddComponent';
 import messages from './messages';
+import { IframeProvider } from '../context/iFrameContext';
+import { messageTypes } from '../constants';
 
 let store;
 let axiosMock;
 const blockId = '123';
 const handleCreateNewCourseXBlockMock = jest.fn();
+const usageKey = 'lb:Axim:TEST:html:571fe018-f3ce-45c9-8f53-5dafcb422fddest-usage-key';
+
+// Mock ComponentPicker to call onComponentSelected on click
+jest.mock('../../library-authoring/component-picker', () => ({
+  ComponentPicker: (props) => {
+    const onClick = () => {
+      if (props.componentPickerMode === 'single') {
+        props.onComponentSelected({
+          usageKey,
+          blockType: 'html',
+        });
+      } else {
+        props.onChangeComponentSelection([{
+          usageKey,
+          blockType: 'html',
+        }]);
+      }
+    };
+    return (
+      <button type="submit" onClick={onClick}>
+        Dummy button
+      </button>
+    );
+  },
+}));
+
+const mockSendMessageToIframe = jest.fn();
+jest.mock('../context/hooks', () => ({
+  useIframe: () => ({
+    sendMessageToIframe: mockSendMessageToIframe,
+  }),
+}));
 
 const renderComponent = (props) => render(
   <AppProvider store={store}>
     <IntlProvider locale="en">
-      <AddComponent
-        blockId={blockId}
-        handleCreateNewCourseXBlock={handleCreateNewCourseXBlockMock}
-        {...props}
-      />
+      <IframeProvider>
+        <AddComponent
+          blockId={blockId}
+          handleCreateNewCourseXBlock={handleCreateNewCourseXBlockMock}
+          {...props}
+        />
+      </IframeProvider>
     </IntlProvider>
   </AppProvider>,
 );
@@ -59,11 +96,19 @@ describe('<AddComponent />', () => {
     const componentTemplates = courseSectionVerticalMock.component_templates;
 
     expect(getByRole('heading', { name: messages.title.defaultMessage })).toBeInTheDocument();
-    Object.keys(componentTemplates).map((component) => (
-      expect(getByRole('button', {
-        name: new RegExp(`${messages.buttonText.defaultMessage} ${componentTemplates[component].display_name}`, 'i'),
-      })).toBeInTheDocument()
-    ));
+    Object.keys(componentTemplates).forEach((component) => {
+      const btn = getByRole('button', {
+        name: new RegExp(
+          `${componentTemplates[component].type
+          } ${messages.buttonText.defaultMessage} ${componentTemplates[component].display_name}`,
+          'i',
+        ),
+      });
+      expect(btn).toBeInTheDocument();
+      if (component.beta) {
+        expect(within(btn).queryByText('Beta')).toBeInTheDocument();
+      }
+    });
   });
 
   it('AddComponent component doesn\'t render when there aren\'t componentTemplates', async () => {
@@ -111,7 +156,11 @@ describe('<AddComponent />', () => {
       }
 
       return expect(getByRole('button', {
-        name: new RegExp(`${messages.buttonText.defaultMessage} ${componentTemplates[component].display_name}`, 'i'),
+        name: new RegExp(
+          `${componentTemplates[component].type
+          } ${messages.buttonText.defaultMessage} ${componentTemplates[component].display_name}`,
+          'i',
+        ),
       })).toBeInTheDocument();
     });
   });
@@ -176,7 +225,7 @@ describe('<AddComponent />', () => {
     const { getByRole } = renderComponent();
 
     const discussionButton = getByRole('button', {
-      name: new RegExp(`${messages.buttonText.defaultMessage} Problem`, 'i'),
+      name: new RegExp(`problem ${messages.buttonText.defaultMessage} Problem`, 'i'),
     });
 
     userEvent.click(discussionButton);
@@ -185,6 +234,22 @@ describe('<AddComponent />', () => {
       parentLocator: '123',
       type: COMPONENT_TYPES.problem,
     }, expect.any(Function));
+  });
+
+  it('calls handleCreateNewCourseXBlock with correct parameters when Problem bank xblock create button is clicked', () => {
+    const { getByRole } = renderComponent();
+
+    const problemBankBtn = getByRole('button', {
+      name: new RegExp(`${messages.buttonText.defaultMessage} Problem Bank`, 'i'),
+    });
+
+    userEvent.click(problemBankBtn);
+    expect(handleCreateNewCourseXBlockMock).toHaveBeenCalled();
+    expect(handleCreateNewCourseXBlockMock).toHaveBeenCalledWith({
+      parentLocator: '123',
+      type: COMPONENT_TYPES.itembank,
+      category: 'itembank',
+    });
   });
 
   it('calls handleCreateNewCourseXBlock with correct parameters when Video xblock create button is clicked', () => {
@@ -206,7 +271,7 @@ describe('<AddComponent />', () => {
     const { getByRole } = renderComponent();
 
     const libraryButton = getByRole('button', {
-      name: new RegExp(`${messages.buttonText.defaultMessage} Library Content`, 'i'),
+      name: new RegExp(`${messages.buttonText.defaultMessage} Legacy Library Content`, 'i'),
     });
 
     userEvent.click(libraryButton);
@@ -376,6 +441,68 @@ describe('<AddComponent />', () => {
       parentLocator: '123',
       category: COMPONENT_TYPES.openassessment,
       boilerplate: 'peer-assessment',
+    });
+  });
+
+  it('shows library picker on clicking v2 library content btn', async () => {
+    renderComponent();
+    const libBtn = await screen.findByRole('button', {
+      name: new RegExp(`${messages.buttonText.defaultMessage} Library content`, 'i'),
+    });
+    userEvent.click(libBtn);
+
+    // click dummy button to execute onComponentSelected prop.
+    const dummyBtn = await screen.findByRole('button', { name: 'Dummy button' });
+    userEvent.click(dummyBtn);
+
+    expect(handleCreateNewCourseXBlockMock).toHaveBeenCalled();
+    expect(handleCreateNewCourseXBlockMock).toHaveBeenCalledWith({
+      type: COMPONENT_TYPES.libraryV2,
+      parentLocator: '123',
+      category: 'html',
+      libraryContentKey: usageKey,
+    });
+  });
+
+  it('closes library component picker on close', async () => {
+    renderComponent();
+    const libBtn = await screen.findByRole('button', {
+      name: new RegExp(`${messages.buttonText.defaultMessage} Library content`, 'i'),
+    });
+    userEvent.click(libBtn);
+
+    expect(screen.queryByRole('button', { name: 'Dummy button' })).toBeInTheDocument();
+    // click dummy button to execute onComponentSelected prop.
+    const closeBtn = await screen.findByRole('button', { name: 'Close' });
+    userEvent.click(closeBtn);
+
+    expect(screen.queryByRole('button', { name: 'Dummy button' })).not.toBeInTheDocument();
+  });
+
+  it('shows component picker on window message', async () => {
+    renderComponent();
+    const message = {
+      data: {
+        type: messageTypes.showMultipleComponentPicker,
+      },
+    };
+    // Dispatch showMultipleComponentPicker message event to open the picker modal.
+    act(() => {
+      window.dispatchEvent(new MessageEvent('message', message));
+    });
+
+    // click dummy button to execute onChangeComponentSelection prop.
+    const dummyBtn = await screen.findByRole('button', { name: 'Dummy button' });
+    userEvent.click(dummyBtn);
+
+    const submitBtn = await screen.findByRole('button', { name: 'Add selected components' });
+    userEvent.click(submitBtn);
+
+    expect(mockSendMessageToIframe).toHaveBeenCalledWith(messageTypes.addSelectedComponentsToBank, {
+      selectedComponents: [{
+        blockType: 'html',
+        usageKey,
+      }],
     });
   });
 

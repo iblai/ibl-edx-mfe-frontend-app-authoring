@@ -18,6 +18,7 @@ import pluginConfig from './pluginConfig';
 import * as module from './hooks';
 import * as tinyMCE from '../../data/constants/tinyMCE';
 import { getRelativeUrl, getStaticUrl, parseAssetName } from './utils';
+import { isLibraryKey } from '../../../generic/key-utils';
 
 export const state = StrictDict({
   // eslint-disable-next-line react-hooks/rules-of-hooks
@@ -98,9 +99,18 @@ export const replaceStaticWithAsset = ({
       const assetName = parseAssetName(src);
       const displayName = isStatic ? staticName : assetName;
       const isCorrectAssetFormat = assetSrc.startsWith('/asset') && assetSrc.match(/\/asset-v1:\S+[+]\S+[@]\S+[+]\S+[@]/g)?.length >= 1;
-      // assets in expandable text areas so not support relative urls so all assets must have the lms
+
+      // assets in expandable text areas do not support relative urls so all assets must have the lms
       // endpoint prepended to the relative url
-      if (editorType === 'expandable') {
+      if (isLibraryKey(learningContextId)) {
+        // We are removing the initial "/" in a "/static/foo.png" link, and then
+        // set the base URL to an endpoint serving the draft version of an asset by
+        // its path.
+        /* istanbul ignore next */
+        if (isStatic) {
+          staticFullUrl = assetSrc.substring(1);
+        }
+      } else if (editorType === 'expandable') {
         if (isCorrectAssetFormat) {
           staticFullUrl = `${lmsEndpointUrl}${assetSrc}`;
         } else {
@@ -136,6 +146,40 @@ export const getImageResizeHandler = ({ editor, imagesRef, setImage }) => () => 
     width,
     height,
   });
+};
+
+/**
+ * Fix TinyMCE editors used in Paragon modals, by re-parenting their modal <div>
+ * from the body to the Paragon modal container.
+ *
+ * This fixes a problem where clicking on any modal/popup within TinyMCE (e.g.
+ * the emoji inserter, the link inserter, the floating format toolbar -
+ * quickbars, etc.) would cause the parent Paragon modal to close, because
+ * Paragon sees it as a "click outside" event. Also fixes some hover effects by
+ * ensuring the layering of the divs is correct.
+ *
+ * This could potentially cause problems if there are TinyMCE editors being used
+ * both on the parent page and inside a Paragon modal popup, but I don't think
+ * we have that situation.
+ *
+ * Note: we can't just do this on init, because the quickbars plugin used by
+ * ExpandableTextEditors creates its modal DIVs later. Ideally we could listen
+ * for some kind of "modal open" event, but I haven't been able to find anything
+ * like that so for now we do this quite frequently, every time there is a
+ * "selectionchange" event (which is pretty often).
+ */
+export const reparentTinyMceModals = /* istanbul ignore next */ () => {
+  const modalLayer = document.querySelector('.pgn__modal-layer');
+  if (!modalLayer) {
+    return;
+  }
+  const tinymceAuxDivs = document.querySelectorAll('.tox.tox-tinymce-aux');
+  for (const tinymceAux of tinymceAuxDivs) {
+    if (tinymceAux.parentElement !== modalLayer) {
+      // Move this tinyMCE modal div into the paragon modal layer.
+      modalLayer.appendChild(tinymceAux);
+    }
+  }
 };
 
 export const setupCustomBehavior = ({
@@ -209,7 +253,19 @@ export const setupCustomBehavior = ({
       if (newContent) { updateContent(newContent); }
     });
   }
-  editor.on('ExecCommand', (e) => {
+
+  editor.on('init', /* istanbul ignore next */ () => {
+    // Check if this editor is inside a (Paragon) modal.
+    // The way we get the editor's root <div> depends on whether or not this particular editor is using an iframe:
+    const editorDiv = editor.bodyElement ?? editor.container;
+    if (editorDiv?.closest('.pgn__modal')) {
+      // This editor is inside a Paragon modal. Use this hack to avoid interference with TinyMCE's own modal popups:
+      reparentTinyMceModals();
+      editor.on('selectionchange', reparentTinyMceModals);
+    }
+  });
+
+  editor.on('ExecCommand', /* istanbul ignore next */ (e) => {
     if (editorType === 'text' && e.command === 'mceFocus') {
       const initialContent = editor.getContent();
       const newContent = module.replaceStaticWithAsset({
@@ -235,7 +291,6 @@ export const editorConfig = ({
   setEditorRef,
   editorContentHtml,
   images,
-  isLibrary,
   placeholder,
   initializeEditor,
   openImgModal,
@@ -245,9 +300,13 @@ export const editorConfig = ({
   content,
   minHeight,
   learningContextId,
+  staticRootUrl,
+  enableImageUpload,
 }) => {
   const lmsEndpointUrl = getConfig().LMS_BASE_URL;
   const studioEndpointUrl = getConfig().STUDIO_BASE_URL;
+
+  const baseURL = staticRootUrl || lmsEndpointUrl;
   const {
     toolbar,
     config,
@@ -255,9 +314,8 @@ export const editorConfig = ({
     imageToolbar,
     quickbarsInsertToolbar,
     quickbarsSelectionToolbar,
-  } = pluginConfig({ isLibrary, placeholder, editorType });
+  } = pluginConfig({ placeholder, editorType, enableImageUpload });
   const isLocaleRtl = isRtl(getLocale());
-
   return {
     onInit: (evt, editor) => {
       setEditorRef(editor);
@@ -274,7 +332,7 @@ export const editorConfig = ({
       min_height: minHeight,
       contextmenu: 'link table',
       directionality: isLocaleRtl ? 'rtl' : 'ltr',
-      document_base_url: lmsEndpointUrl,
+      document_base_url: baseURL,
       imagetools_cors_hosts: [removeProtocolFromUrl(lmsEndpointUrl), removeProtocolFromUrl(studioEndpointUrl)],
       imagetools_toolbar: imageToolbar,
       formats: { label: { inline: 'label' } },
@@ -416,6 +474,17 @@ export const setAssetToStaticUrl = ({ editorValue, lmsEndpointUrl }) => {
   assetSrcs.filter(src => src.startsWith('/asset')).forEach(src => {
     const nameFromEditorSrc = parseAssetName(src);
     const portableUrl = getStaticUrl({ displayName: nameFromEditorSrc });
+    const currentSrc = src.substring(0, src.search(/("|&quot;)/));
+    const updatedContent = content.replace(currentSrc, portableUrl);
+    content = updatedContent;
+  });
+
+  /* istanbul ignore next */
+  assetSrcs.filter(src => src.startsWith('static/')).forEach(src => {
+    // Before storing assets we make sure that library static assets points again to
+    // `/static/dummy.jpg` instead of using the relative url `static/dummy.jpg`
+    const nameFromEditorSrc = parseAssetName(src);
+    const portableUrl = `/${ nameFromEditorSrc}`;
     const currentSrc = src.substring(0, src.search(/("|&quot;)/));
     const updatedContent = content.replace(currentSrc, portableUrl);
     content = updatedContent;

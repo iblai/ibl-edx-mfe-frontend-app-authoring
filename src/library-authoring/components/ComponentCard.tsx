@@ -1,21 +1,35 @@
-import React, { useContext, useState } from 'react';
+import { useCallback, useContext, useState } from 'react';
 import { FormattedMessage, useIntl } from '@edx/frontend-platform/i18n';
 import {
   ActionRow,
+  Button,
+  Dropdown,
   Icon,
   IconButton,
-  Dropdown,
+  useToggle,
 } from '@openedx/paragon';
-import { MoreVert } from '@openedx/paragon/icons';
+import {
+  AddCircleOutline,
+  CheckBoxIcon,
+  CheckBoxOutlineBlank,
+  MoreVert,
+} from '@openedx/paragon/icons';
 
+import { STUDIO_CLIPBOARD_CHANNEL } from '../../constants';
 import { updateClipboard } from '../../generic/data/api';
 import { ToastContext } from '../../generic/toast-context';
 import { type ContentHit } from '../../search-manager';
-import { useLibraryContext } from '../common/context';
-import messages from './messages';
-import { STUDIO_CLIPBOARD_CHANNEL } from '../../constants';
+import { useComponentPickerContext } from '../common/context/ComponentPickerContext';
+import { useLibraryContext } from '../common/context/LibraryContext';
+import { SidebarActions, useSidebarContext } from '../common/context/SidebarContext';
+import { useRemoveComponentsFromCollection } from '../data/apiHooks';
+import { useLibraryRoutes } from '../routes';
+
 import BaseComponentCard from './BaseComponentCard';
 import { canEditComponent } from './ComponentEditorModal';
+import messages from './messages';
+import ComponentDeleter from './ComponentDeleter';
+import { PublishStatus } from '../../search-manager/data/api';
 
 type ComponentCardProps = {
   contentHit: ContentHit,
@@ -23,10 +37,25 @@ type ComponentCardProps = {
 
 export const ComponentMenu = ({ usageKey }: { usageKey: string }) => {
   const intl = useIntl();
-  const { openComponentEditor } = useLibraryContext();
+  const {
+    libraryId,
+    collectionId,
+    openComponentEditor,
+  } = useLibraryContext();
+
+  const {
+    sidebarComponentInfo,
+    openComponentInfoSidebar,
+    closeLibrarySidebar,
+    setSidebarAction,
+  } = useSidebarContext();
+
   const canEdit = usageKey && canEditComponent(usageKey);
   const { showToast } = useContext(ToastContext);
   const [clipboardBroadcastChannel] = useState(() => new BroadcastChannel(STUDIO_CLIPBOARD_CHANNEL));
+  const removeComponentsMutation = useRemoveComponentsFromCollection(libraryId, collectionId);
+  const [isConfirmingDelete, confirmDelete, cancelDelete] = useToggle(false);
+
   const updateClipboardClick = () => {
     updateClipboard(usageKey)
       .then((clipboardData) => {
@@ -36,8 +65,25 @@ export const ComponentMenu = ({ usageKey }: { usageKey: string }) => {
       .catch(() => showToast(intl.formatMessage(messages.copyToClipboardError)));
   };
 
+  const removeFromCollection = () => {
+    removeComponentsMutation.mutateAsync([usageKey]).then(() => {
+      if (sidebarComponentInfo?.id === usageKey) {
+        // Close sidebar if current component is open
+        closeLibrarySidebar();
+      }
+      showToast(intl.formatMessage(messages.removeComponentSucess));
+    }).catch(() => {
+      showToast(intl.formatMessage(messages.removeComponentFailure));
+    });
+  };
+
+  const showManageCollections = useCallback(() => {
+    setSidebarAction(SidebarActions.JumpToAddCollections);
+    openComponentInfoSidebar(usageKey);
+  }, [setSidebarAction, openComponentInfoSidebar, usageKey]);
+
   return (
-    <Dropdown id="component-card-dropdown" onClick={(e) => e.stopPropagation()}>
+    <Dropdown id="component-card-dropdown">
       <Dropdown.Toggle
         id="component-card-menu-toggle"
         as={IconButton}
@@ -54,44 +100,138 @@ export const ComponentMenu = ({ usageKey }: { usageKey: string }) => {
         <Dropdown.Item onClick={updateClipboardClick}>
           <FormattedMessage {...messages.menuCopyToClipboard} />
         </Dropdown.Item>
-        <Dropdown.Item disabled>
+        <Dropdown.Item onClick={confirmDelete}>
+          <FormattedMessage {...messages.menuDelete} />
+        </Dropdown.Item>
+        {collectionId && (
+          <Dropdown.Item onClick={removeFromCollection}>
+            <FormattedMessage {...messages.menuRemoveFromCollection} />
+          </Dropdown.Item>
+        )}
+        <Dropdown.Item onClick={showManageCollections}>
           <FormattedMessage {...messages.menuAddToCollection} />
         </Dropdown.Item>
       </Dropdown.Menu>
+      <ComponentDeleter usageKey={usageKey} isConfirmingDelete={isConfirmingDelete} cancelDelete={cancelDelete} />
     </Dropdown>
   );
 };
 
-const ComponentCard = ({ contentHit } : ComponentCardProps) => {
+interface AddComponentWidgetProps {
+  usageKey: string;
+  blockType: string;
+}
+
+const AddComponentWidget = ({ usageKey, blockType }: AddComponentWidgetProps) => {
+  const intl = useIntl();
+
   const {
-    openComponentInfoSidebar,
-  } = useLibraryContext();
+    componentPickerMode,
+    onComponentSelected,
+    addComponentToSelectedComponents,
+    removeComponentFromSelectedComponents,
+    selectedComponents,
+  } = useComponentPickerContext();
+
+  // istanbul ignore if: this should never happen
+  if (!usageKey) {
+    throw new Error('usageKey is required');
+  }
+
+  // istanbul ignore if: this should never happen
+  if (!componentPickerMode) {
+    return null;
+  }
+
+  if (componentPickerMode === 'single') {
+    return (
+      <Button
+        variant="outline-primary"
+        iconBefore={AddCircleOutline}
+        onClick={() => {
+          onComponentSelected({ usageKey, blockType });
+        }}
+      >
+        <FormattedMessage {...messages.componentPickerSingleSelectTitle} />
+      </Button>
+    );
+  }
+
+  if (componentPickerMode === 'multiple') {
+    const isChecked = selectedComponents.some((component) => component.usageKey === usageKey);
+
+    const handleChange = () => {
+      const selectedComponent = {
+        usageKey,
+        blockType,
+      };
+      if (!isChecked) {
+        addComponentToSelectedComponents(selectedComponent);
+      } else {
+        removeComponentFromSelectedComponents(selectedComponent);
+      }
+    };
+
+    return (
+      <Button
+        variant="outline-primary"
+        iconBefore={isChecked ? CheckBoxIcon : CheckBoxOutlineBlank}
+        onClick={handleChange}
+      >
+        {intl.formatMessage(messages.componentPickerMultipleSelectTitle)}
+      </Button>
+    );
+  }
+
+  // istanbul ignore next: this should never happen
+  return null;
+};
+
+const ComponentCard = ({ contentHit }: ComponentCardProps) => {
+  const { showOnlyPublished } = useLibraryContext();
+  const { openComponentInfoSidebar } = useSidebarContext();
+  const { componentPickerMode } = useComponentPickerContext();
 
   const {
     blockType,
     formatted,
     tags,
     usageKey,
+    publishStatus,
   } = contentHit;
-  const description: string = (/* eslint-disable */
-    blockType === 'html' ? formatted?.content?.htmlContent :
-    blockType === 'problem' ? formatted?.content?.capaContent :
-    undefined
-  ) ?? '';/* eslint-enable */
-  const displayName = formatted?.displayName ?? '';
+  const componentDescription: string = (
+    showOnlyPublished ? formatted.published?.description : formatted.description
+  ) ?? '';
+  const displayName: string = (
+    showOnlyPublished ? formatted.published?.displayName : formatted.displayName
+  ) ?? '';
+
+  const { navigateTo } = useLibraryRoutes();
+  const openComponent = useCallback(() => {
+    openComponentInfoSidebar(usageKey);
+
+    if (!componentPickerMode) {
+      navigateTo({ componentId: usageKey });
+    }
+  }, [usageKey, navigateTo, openComponentInfoSidebar]);
 
   return (
     <BaseComponentCard
       componentType={blockType}
       displayName={displayName}
-      description={description}
+      description={componentDescription}
       tags={tags}
       actions={(
         <ActionRow>
-          <ComponentMenu usageKey={usageKey} />
+          {componentPickerMode ? (
+            <AddComponentWidget usageKey={usageKey} blockType={blockType} />
+          ) : (
+            <ComponentMenu usageKey={usageKey} />
+          )}
         </ActionRow>
       )}
-      openInfoSidebar={() => openComponentInfoSidebar(usageKey)}
+      hasUnpublishedChanges={publishStatus !== PublishStatus.Published}
+      onSelect={openComponent}
     />
   );
 };

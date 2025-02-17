@@ -6,8 +6,7 @@ import {
 import { Add } from '@openedx/paragon/icons';
 import { ClearFiltersButton } from '../search-manager';
 import messages from './messages';
-import { useContentLibrary } from './data/apiHooks';
-import { useLibraryContext } from './common/context';
+import { useLibraryContext } from './common/context/LibraryContext';
 
 export const NoComponents = ({
   infoText = messages.noComponents,
@@ -18,14 +17,12 @@ export const NoComponents = ({
   addBtnText?: MessageDescriptor;
   handleBtnClick: () => void;
 }) => {
-  const { libraryId } = useLibraryContext();
-  const { data: libraryData } = useContentLibrary(libraryId);
-  const canEditLibrary = libraryData?.canEditLibrary ?? false;
+  const { readOnly } = useLibraryContext();
 
   return (
     <Stack direction="horizontal" gap={3} className="mt-6 justify-content-center">
       <FormattedMessage {...infoText} />
-      {canEditLibrary && (
+      {!readOnly && (
         <Button iconBefore={Add} onClick={handleBtnClick}>
           <FormattedMessage {...addBtnText} />
         </Button>

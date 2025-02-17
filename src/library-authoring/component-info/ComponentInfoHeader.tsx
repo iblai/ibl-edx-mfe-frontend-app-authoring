@@ -9,22 +9,26 @@ import {
 import { Edit } from '@openedx/paragon/icons';
 
 import { ToastContext } from '../../generic/toast-context';
-import type { ContentLibrary } from '../data/api';
+import { useLibraryContext } from '../common/context/LibraryContext';
+import { useSidebarContext } from '../common/context/SidebarContext';
 import { useUpdateXBlockFields, useXBlockFields } from '../data/apiHooks';
 import messages from './messages';
 
-interface ComponentInfoHeaderProps {
-  library: ContentLibrary;
-  usageKey: string;
-}
-
-const ComponentInfoHeader = ({ library, usageKey }: ComponentInfoHeaderProps) => {
+const ComponentInfoHeader = () => {
   const intl = useIntl();
   const [inputIsActive, setIsActive] = useState(false);
 
+  const { readOnly, showOnlyPublished } = useLibraryContext();
+  const { sidebarComponentInfo } = useSidebarContext();
+
+  const usageKey = sidebarComponentInfo?.id;
+  // istanbul ignore next
+  if (!usageKey) {
+    throw new Error('usageKey is required');
+  }
   const {
     data: xblockFields,
-  } = useXBlockFields(usageKey);
+  } = useXBlockFields(usageKey, showOnlyPublished ? 'published' : 'draft');
 
   const updateMutation = useUpdateXBlockFields(usageKey);
   const { showToast } = useContext(ToastContext);
@@ -80,7 +84,7 @@ const ComponentInfoHeader = ({ library, usageKey }: ComponentInfoHeaderProps) =>
             <span className="font-weight-bold m-1.5">
               {xblockFields?.displayName}
             </span>
-            {library.canEditLibrary && (
+            {!readOnly && (
               <IconButton
                 src={Edit}
                 iconAs={Icon}

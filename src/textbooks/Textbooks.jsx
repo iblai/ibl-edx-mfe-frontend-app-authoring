@@ -10,12 +10,14 @@ import {
 import { Add as AddIcon } from '@openedx/paragon/icons';
 import { useSelector } from 'react-redux';
 import { Helmet } from 'react-helmet';
+import { Link } from 'react-router-dom';
 
 import { SavingErrorAlert } from '../generic/saving-error-alert';
 import { getProcessingNotification } from '../generic/processing-notification/data/selectors';
 import { useModel } from '../generic/model-store';
 import { LoadingSpinner } from '../generic/Loading';
 import SubHeader from '../generic/sub-header/SubHeader';
+import ConnectionErrorAlert from '../generic/ConnectionErrorAlert';
 import ProcessingNotification from '../generic/processing-notification';
 import EmptyPlaceholder from './empty-placeholder/EmptyPlaceholder';
 import TextbookCard from './textbook-card/TextbooksCard';
@@ -24,15 +26,18 @@ import TextbookForm from './textbook-form/TextbookForm';
 import { useTextbooks } from './hooks';
 import { getTextbookFormInitialValues } from './utils';
 import messages from './messages';
+import { getWaffleFlags } from '../data/selectors';
 
 const Textbooks = ({ courseId }) => {
   const intl = useIntl();
+  const waffleFlags = useSelector(getWaffleFlags);
 
   const courseDetails = useModel('courseDetails', courseId);
 
   const {
     textbooks,
     isLoading,
+    isLoadingFailed,
     breadcrumbs,
     errorMessage,
     savingStatus,
@@ -43,12 +48,20 @@ const Textbooks = ({ courseId }) => {
     handleSavingStatusDispatch,
     handleTextbookEditFormSubmit,
     handleTextbookDeleteSubmit,
-  } = useTextbooks(courseId);
+  } = useTextbooks(courseId, waffleFlags);
 
   const {
     isShow: showProcessingNotification,
     title: processingNotificationTitle,
   } = useSelector(getProcessingNotification);
+
+  if (isLoadingFailed) {
+    return (
+      <Container size="xl" className="course-unit px-4 mt-4">
+        <ConnectionErrorAlert />
+      </Container>
+    );
+  }
 
   if (isLoading) {
     return (
@@ -70,7 +83,11 @@ const Textbooks = ({ courseId }) => {
           <SubHeader
             title={intl.formatMessage(messages.headingTitle)}
             breadcrumbs={(
-              <Breadcrumb ariaLabel={intl.formatMessage(messages.breadcrumbAriaLabel)} links={breadcrumbs} />
+              <Breadcrumb
+                linkAs={Link}
+                ariaLabel={intl.formatMessage(messages.breadcrumbAriaLabel)}
+                links={breadcrumbs}
+              />
             )}
             headerActions={(
               <Button

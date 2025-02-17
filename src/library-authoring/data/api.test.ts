@@ -18,6 +18,28 @@ describe('library data API', () => {
     });
   });
 
+  describe('deleteLibraryBlock', () => {
+    it('should delete a library block', async () => {
+      const { axiosMock } = initializeMocks();
+      const usageKey = 'lib:org:1';
+      const url = api.getLibraryBlockMetadataUrl(usageKey);
+      axiosMock.onDelete(url).reply(200);
+      await api.deleteLibraryBlock({ usageKey });
+      expect(axiosMock.history.delete[0].url).toEqual(url);
+    });
+  });
+
+  describe('restoreLibraryBlock', () => {
+    it('should restore a soft-deleted library block', async () => {
+      const { axiosMock } = initializeMocks();
+      const usageKey = 'lib:org:1';
+      const url = api.getLibraryBlockRestoreUrl(usageKey);
+      axiosMock.onPost(url).reply(200);
+      await api.restoreLibraryBlock({ usageKey });
+      expect(axiosMock.history.post[0].url).toEqual(url);
+    });
+  });
+
   describe('commitLibraryChanges', () => {
     it('should commit library changes', async () => {
       const { axiosMock } = initializeMocks();

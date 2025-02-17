@@ -19,7 +19,6 @@ import Header from '../header';
 import SubHeader from '../generic/sub-header/SubHeader';
 import HomeSidebar from './home-sidebar';
 import TabsSection from './tabs-section';
-import { isMixedOrV1LibrariesMode, isMixedOrV2LibrariesMode } from './tabs-section/utils';
 import OrganizationSection from './organization-section';
 import VerifyEmailLayout from './verify-email-layout';
 import CreateNewCourseForm from './create-new-course-form';
@@ -46,18 +45,19 @@ const StudioHome = () => {
     hasAbilityToCreateNewCourse,
     isFiltered,
     setShowNewCourseContainer,
-  } = useStudioHome(isPaginationCoursesEnabled);
+    librariesV1Enabled,
+    librariesV2Enabled,
+  } = useStudioHome();
 
-  const libMode = getConfig().LIBRARY_MODE;
-
-  const v1LibraryTab = isMixedOrV1LibrariesMode(libMode) && location?.pathname.split('/').pop() === 'libraries-v1';
-  const showV2LibraryURL = isMixedOrV2LibrariesMode(libMode) && !v1LibraryTab;
+  const v1LibraryTab = librariesV1Enabled && location?.pathname.split('/').pop() === 'libraries-v1';
+  const showV2LibraryURL = librariesV2Enabled && !v1LibraryTab;
 
   const {
     userIsActive,
     studioShortName,
     studioRequestEmail,
     showNewLibraryButton,
+    showNewLibraryV2Button,
   } = studioHomeData;
 
   const getHeaderButtons = useCallback(() => {
@@ -87,7 +87,7 @@ const StudioHome = () => {
       );
     }
 
-    if (showNewLibraryButton || showV2LibraryURL) {
+    if ((showNewLibraryButton && !showV2LibraryURL) || (showV2LibraryURL && showNewLibraryV2Button)) {
       const newLibraryClick = () => {
         if (showV2LibraryURL) {
           navigate('/library/create');
@@ -102,7 +102,6 @@ const StudioHome = () => {
           variant="outline-primary"
           iconBefore={AddIcon}
           size="sm"
-          disabled={showNewCourseContainer}
           onClick={newLibraryClick}
           data-testid="new-library-button"
         >
@@ -155,6 +154,8 @@ const StudioHome = () => {
               onClickNewCourse={() => setShowNewCourseContainer(true)}
               isShowProcessing={isShowProcessing && !isFiltered}
               isPaginationCoursesEnabled={isPaginationCoursesEnabled}
+              librariesV1Enabled={librariesV1Enabled}
+              librariesV2Enabled={librariesV2Enabled}
             />
           </section>
         </Layout.Element>

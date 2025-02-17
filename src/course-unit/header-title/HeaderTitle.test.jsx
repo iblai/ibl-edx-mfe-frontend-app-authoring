@@ -1,6 +1,6 @@
 import MockAdapter from 'axios-mock-adapter';
 import { getAuthenticatedHttpClient } from '@edx/frontend-platform/auth';
-import { render } from '@testing-library/react';
+import { render, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { IntlProvider } from '@edx/frontend-platform/i18n';
 import { AppProvider } from '@edx/frontend-platform/react';
@@ -84,7 +84,7 @@ describe('<HeaderTitle />', () => {
     expect(handleTitleEdit).toHaveBeenCalledTimes(1);
   });
 
-  it('calls saving title by clicking outside or press Enter key', async () => {
+  it('calls saving title by clicking outside or press Enter key', () => {
     const { getByRole } = renderComponent({
       isTitleEditFormOpen: true,
     });
@@ -108,7 +108,7 @@ describe('<HeaderTitle />', () => {
         ...courseUnitIndexMock,
         user_partition_info: {
           ...courseUnitIndexMock.user_partition_info,
-          selected_partition_index: '1',
+          selected_partition_index: 1,
           selected_groups_label: 'Visibility group 1',
         },
       });
@@ -117,7 +117,9 @@ describe('<HeaderTitle />', () => {
     const visibilityMessage = messages.definedVisibilityMessage.defaultMessage
       .replace('{selectedGroupsLabel}', 'Visibility group 1');
 
-    expect(getByText(visibilityMessage)).toBeInTheDocument();
+    await waitFor(() => {
+      expect(getByText(visibilityMessage)).toBeInTheDocument();
+    });
   });
 
   it('displays a visibility message with the selected groups for some of xblock', async () => {
@@ -130,6 +132,8 @@ describe('<HeaderTitle />', () => {
     await executeThunk(fetchCourseUnitQuery(blockId), store.dispatch);
     const { getByText } = renderComponent();
 
-    expect(getByText(messages.commonVisibilityMessage.defaultMessage)).toBeInTheDocument();
+    await waitFor(() => {
+      expect(getByText(messages.commonVisibilityMessage.defaultMessage)).toBeInTheDocument();
+    });
   });
 });

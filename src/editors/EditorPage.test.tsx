@@ -11,7 +11,7 @@ import EditorPage from './EditorPage';
 // Mock this plugins component:
 jest.mock('frontend-components-tinymce-advanced-plugins', () => ({ a11ycheckerCss: '' }));
 // Always mock out the "fetch course images" endpoint:
-jest.spyOn(editorCmsApi, 'fetchImages').mockImplementation(async () => ( // eslint-disable-next-line
+jest.spyOn(editorCmsApi, 'fetchCourseImages').mockImplementation(async () => ( // eslint-disable-next-line
   { data: { assets: [], start: 0, end: 0, page: 0, pageSize: 50, totalCount: 0 } }
 ));
 // Mock out the 'get ancestors' API:
@@ -25,6 +25,9 @@ jest.spyOn(editorCmsApi, 'fetchByUnitId').mockImplementation(async () => ({
       has_children: true,
     }],
   },
+}));
+jest.mock('../library-authoring/LibraryBlock', () => ({
+  LibraryBlock: jest.fn(() => (<div>Advanced Editor Iframe</div>)),
 }));
 
 const defaultPropsHtml = {
@@ -79,9 +82,7 @@ describe('EditorPage', () => {
     expect(modalElement.classList).not.toContain('pgn__modal-xl');
   });
 
-  test('it shows an error message if there is no corresponding editor', async () => {
-    // We can edit 'html', 'problem', and 'video' blocks.
-    // But if we try to edit some other type, say 'fake', we should get an error:
+  test('it shows the Advanced Editor if there is no corresponding editor', async () => {
     jest.spyOn(editorCmsApi, 'fetchBlockById').mockImplementationOnce(async () => ( // eslint-disable-next-line
       { status: 200, data: { display_name: 'Fake Un-editable Block', category: 'fake', metadata: {}, data: '' } }
     ));
@@ -93,6 +94,6 @@ describe('EditorPage', () => {
     };
     render(<EditorPage {...defaultPropsFake} />);
 
-    expect(await screen.findByText('Error: Could Not find Editor')).toBeInTheDocument();
+    expect(await screen.findByText('Advanced Editor Iframe')).toBeInTheDocument();
   });
 });

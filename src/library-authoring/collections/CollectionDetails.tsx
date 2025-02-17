@@ -6,7 +6,8 @@ import classNames from 'classnames';
 import { getItemIcon } from '../../generic/block-type-utils';
 import { ToastContext } from '../../generic/toast-context';
 import { BlockTypeLabel, useGetBlockTypes } from '../../search-manager';
-import type { ContentLibrary } from '../data/api';
+import { useLibraryContext } from '../common/context/LibraryContext';
+import { useSidebarContext } from '../common/context/SidebarContext';
 import { useCollection, useUpdateCollection } from '../data/apiHooks';
 import HistoryWidget from '../generic/history-widget';
 import messages from './messages';
@@ -36,12 +37,11 @@ const BlockCount = ({
   );
 };
 
-interface CollectionStatsWidgetProps {
-  libraryId: string,
-  collectionId: string,
-}
+const CollectionStatsWidget = () => {
+  const { libraryId } = useLibraryContext();
+  const { sidebarComponentInfo } = useSidebarContext();
+  const collectionId = sidebarComponentInfo?.id;
 
-const CollectionStatsWidget = ({ libraryId, collectionId }: CollectionStatsWidgetProps) => {
   const { data: blockTypes } = useGetBlockTypes([
     `context_key = "${libraryId}"`,
     `collections.key = "${collectionId}"`,
@@ -96,17 +96,20 @@ const CollectionStatsWidget = ({ libraryId, collectionId }: CollectionStatsWidge
   );
 };
 
-interface CollectionDetailsProps {
-  library: ContentLibrary,
-  collectionId: string,
-}
-
-const CollectionDetails = ({ library, collectionId }: CollectionDetailsProps) => {
+const CollectionDetails = () => {
   const intl = useIntl();
   const { showToast } = useContext(ToastContext);
+  const { libraryId, readOnly } = useLibraryContext();
+  const { sidebarComponentInfo } = useSidebarContext();
 
-  const updateMutation = useUpdateCollection(library.id, collectionId);
-  const { data: collection } = useCollection(library.id, collectionId);
+  const collectionId = sidebarComponentInfo?.id;
+  // istanbul ignore next: This should never happen
+  if (!collectionId) {
+    throw new Error('collectionId is required');
+  }
+
+  const updateMutation = useUpdateCollection(libraryId, collectionId);
+  const { data: collection } = useCollection(libraryId, collectionId);
 
   const [description, setDescription] = useState(collection?.description || '');
 
@@ -142,7 +145,7 @@ const CollectionDetails = ({ library, collectionId }: CollectionDetailsProps) =>
         <h3 className="h5">
           {intl.formatMessage(messages.detailsTabDescriptionTitle)}
         </h3>
-        {library.canEditLibrary ? (
+        {!readOnly ? (
           <textarea
             className="form-control"
             value={description}
@@ -155,7 +158,7 @@ const CollectionDetails = ({ library, collectionId }: CollectionDetailsProps) =>
         <h3 className="h5">
           {intl.formatMessage(messages.detailsTabStatsTitle)}
         </h3>
-        <CollectionStatsWidget libraryId={library.id} collectionId={collectionId} />
+        <CollectionStatsWidget />
       </div>
       <hr className="w-100" />
       <div>
@@ -163,8 +166,7 @@ const CollectionDetails = ({ library, collectionId }: CollectionDetailsProps) =>
           {intl.formatMessage(messages.detailsTabHistoryTitle)}
         </h3>
         <HistoryWidget
-          created={collection.created ? new Date(collection.created) : null}
-          modified={collection.modified ? new Date(collection.modified) : null}
+          {...collection}
         />
       </div>
     </Stack>

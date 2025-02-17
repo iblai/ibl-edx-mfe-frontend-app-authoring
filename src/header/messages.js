@@ -96,6 +96,11 @@ const messages = defineMessages({
     defaultMessage: 'Export Course',
     description: 'Link to Studio Export page',
   },
+  'header.links.optimizer': {
+    id: 'header.links.optimizer',
+    defaultMessage: 'Optimize Course',
+    description: 'Fix broken links and other issues in your course',
+  },
   'header.links.exportTags': {
     id: 'header.links.exportTags',
     defaultMessage: 'Export Tags',
@@ -110,11 +115,6 @@ const messages = defineMessages({
     id: 'header.user.menu.studio',
     defaultMessage: 'Studio Home',
     description: 'Link to Studio Home',
-  },
-  'header.user.menu.maintenance': {
-    id: 'header.user.menu.maintenance',
-    defaultMessage: 'Maintenance',
-    description: 'Link to the Studio maintenance page',
   },
   'header.user.menu.logout': {
     id: 'header.user.menu.logout',

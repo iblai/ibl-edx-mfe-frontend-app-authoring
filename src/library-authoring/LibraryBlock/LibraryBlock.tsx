@@ -4,9 +4,13 @@ import { getConfig } from '@edx/frontend-platform';
 
 import messages from './messages';
 
+export type VersionSpec = 'published' | 'draft' | number;
+
 interface LibraryBlockProps {
   onBlockNotification?: (event: { eventType: string; [key: string]: any }) => void;
   usageKey: string;
+  version?: VersionSpec;
+  view?: string;
 }
 /**
  * React component that displays an XBlock in a sandboxed IFrame.
@@ -17,10 +21,18 @@ interface LibraryBlockProps {
  * cannot access things like the user's cookies, nor can it make GET/POST
  * requests as the user. However, it is allowed to call any XBlock handlers.
  */
-const LibraryBlock = ({ onBlockNotification, usageKey }: LibraryBlockProps) => {
+export const LibraryBlock = ({
+  onBlockNotification,
+  usageKey,
+  version,
+  view,
+}: LibraryBlockProps) => {
   const iframeRef = useRef<HTMLIFrameElement>(null);
-  const [iFrameHeight, setIFrameHeight] = useState(600);
-  const lmsBaseUrl = getConfig().LMS_BASE_URL;
+  const xblockView = view ?? 'student_view';
+  const defaultiFrameHeight = xblockView === 'studio_view' ? 80 : 50;
+
+  const [iFrameHeight, setIFrameHeight] = useState(defaultiFrameHeight);
+  const studioBaseUrl = getConfig().STUDIO_BASE_URL;
 
   const intl = useIntl();
 
@@ -56,15 +68,21 @@ const LibraryBlock = ({ onBlockNotification, usageKey }: LibraryBlockProps) => {
     // Messages are the only way that the code in the IFrame can communicate
     // with the surrounding UI.
     window.addEventListener('message', receivedWindowMessage);
+    if (window.self !== window.top) {
+      // This component is loaded inside an iframe.
+      setIFrameHeight(86);
+    }
 
     return () => {
       window.removeEventListener('message', receivedWindowMessage);
     };
   }, []);
 
+  const queryStr = version ? `?version=${version}` : '';
+
   return (
     <div style={{
-      height: `${iFrameHeight}px`,
+      height: `${iFrameHeight}vh`,
       boxSizing: 'content-box',
       position: 'relative',
       overflow: 'hidden',
@@ -74,7 +92,7 @@ const LibraryBlock = ({ onBlockNotification, usageKey }: LibraryBlockProps) => {
       <iframe
         ref={iframeRef}
         title={intl.formatMessage(messages.iframeTitle)}
-        src={`${lmsBaseUrl}/xblocks/v2/${usageKey}/embed/student_view/`}
+        src={`${studioBaseUrl}/xblocks/v2/${usageKey}/embed/${xblockView}/${queryStr}`}
         data-testid="block-preview"
         style={{
           width: '100%',
@@ -89,5 +107,3 @@ const LibraryBlock = ({ onBlockNotification, usageKey }: LibraryBlockProps) => {
     </div>
   );
 };
-
-export default LibraryBlock;

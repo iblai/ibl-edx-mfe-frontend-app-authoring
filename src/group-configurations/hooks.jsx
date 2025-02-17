@@ -85,6 +85,7 @@ const useGroupConfigurations = (courseId) => {
 
   return {
     isLoading: loadingStatus === RequestStatus.IN_PROGRESS,
+    isLoadingDenied: loadingStatus === RequestStatus.DENIED,
     savingStatus,
     contentGroupActions,
     experimentConfigurationActions,
@@ -96,5 +97,4 @@ const useGroupConfigurations = (courseId) => {
   };
 };
 
-// eslint-disable-next-line import/prefer-default-export
 export { useGroupConfigurations };

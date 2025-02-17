@@ -1,18 +1,12 @@
-import React from 'react';
+import { getConfig } from '@edx/frontend-platform';
 
-import { render } from '@testing-library/react';
-
-import { getConfig, initializeMockApp } from '@edx/frontend-platform';
-import MockAdapter from 'axios-mock-adapter';
-import { getAuthenticatedHttpClient } from '@edx/frontend-platform/auth';
-import { AppProvider } from '@edx/frontend-platform/react';
-import { IntlProvider } from '@edx/frontend-platform/i18n';
-import initializeStore from './store';
 import CourseAuthoringPage from './CourseAuthoringPage';
 import PagesAndResources from './pages-and-resources/PagesAndResources';
 import { executeThunk } from './utils';
 import { fetchCourseApps } from './pages-and-resources/data/thunks';
-import { fetchCourseDetail } from './data/thunks';
+import { fetchCourseDetail, fetchWaffleFlags } from './data/thunks';
+import { getApiWaffleFlagsUrl } from './data/api';
+import { initializeMocks, render } from './testUtils';
 
 const courseId = 'course-v1:edX+TestX+Test_Course';
 let mockPathname = '/evilguy/';
@@ -25,17 +19,14 @@ jest.mock('react-router-dom', () => ({
 let axiosMock;
 let store;
 
-beforeEach(() => {
-  initializeMockApp({
-    authenticatedUser: {
-      userId: 3,
-      username: 'abc123',
-      administrator: true,
-      roles: [],
-    },
-  });
-  store = initializeStore();
-  axiosMock = new MockAdapter(getAuthenticatedHttpClient());
+beforeEach(async () => {
+  const mocks = initializeMocks();
+  store = mocks.reduxStore;
+  axiosMock = mocks.axiosMock;
+  axiosMock
+    .onGet(getApiWaffleFlagsUrl(courseId))
+    .reply(200, {});
+  await executeThunk(fetchWaffleFlags(courseId), store.dispatch);
 });
 
 describe('Editor Pages Load no header', () => {
@@ -51,13 +42,9 @@ describe('Editor Pages Load no header', () => {
     mockPathname = '/editor/';
     await mockStoreSuccess();
     const wrapper = render(
-      <AppProvider store={store}>
-        <IntlProvider locale="en">
-          <CourseAuthoringPage courseId={courseId}>
-            <PagesAndResources courseId={courseId} />
-          </CourseAuthoringPage>
-        </IntlProvider>
-      </AppProvider>
+      <CourseAuthoringPage courseId={courseId}>
+        <PagesAndResources courseId={courseId} />
+      </CourseAuthoringPage>
       ,
     );
     expect(wrapper.queryByRole('status')).not.toBeInTheDocument();
@@ -66,13 +53,9 @@ describe('Editor Pages Load no header', () => {
     mockPathname = '/evilguy/';
     await mockStoreSuccess();
     const wrapper = render(
-      <AppProvider store={store}>
-        <IntlProvider locale="en">
-          <CourseAuthoringPage courseId={courseId}>
-            <PagesAndResources courseId={courseId} />
-          </CourseAuthoringPage>
-        </IntlProvider>
-      </AppProvider>
+      <CourseAuthoringPage courseId={courseId}>
+        <PagesAndResources courseId={courseId} />
+      </CourseAuthoringPage>
       ,
     );
     expect(wrapper.queryByRole('status')).toBeInTheDocument();
@@ -100,14 +83,7 @@ describe('Course authoring page', () => {
   };
   test('renders not found page on non-existent course key', async () => {
     await mockStoreNotFound();
-    const wrapper = render(
-      <AppProvider store={store}>
-        <IntlProvider locale="en">
-          <CourseAuthoringPage courseId={courseId} />
-        </IntlProvider>
-      </AppProvider>
-      ,
-    );
+    const wrapper = render(<CourseAuthoringPage courseId={courseId} />);
     expect(await wrapper.findByTestId('notFoundAlert')).toBeInTheDocument();
   });
   test('does not render not found page on other kinds of error', async () => {
@@ -118,13 +94,9 @@ describe('Course authoring page', () => {
     // found alert is not present.
     const contentTestId = 'courseAuthoringPageContent';
     const wrapper = render(
-      <AppProvider store={store}>
-        <IntlProvider locale="en">
-          <CourseAuthoringPage courseId={courseId}>
-            <div data-testid={contentTestId} />
-          </CourseAuthoringPage>
-        </IntlProvider>
-      </AppProvider>
+      <CourseAuthoringPage courseId={courseId}>
+        <div data-testid={contentTestId} />
+      </CourseAuthoringPage>
       ,
     );
     expect(await wrapper.findByTestId(contentTestId)).toBeInTheDocument();

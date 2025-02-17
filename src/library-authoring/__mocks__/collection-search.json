@@ -34,6 +34,10 @@
             "key": [
               "my-first-collection"
             ]
+          },
+          "published": {
+            "display_name": "Introduction to Testing",
+            "description": "Testing"
           }
         },
         {
@@ -64,6 +68,10 @@
             "key": [
               "my-first-collection"
             ]
+          },
+          "published": {
+            "display_name": "Second Text Component",
+            "description": "Second Testing"
           }
         },
         {
@@ -97,6 +105,10 @@
               "my-first-collection",
               "my-second-collection"
             ]
+          },
+          "published": {
+            "display_name": "Third Text component",
+            "description": "Third Testing"
           }
         },
         {
@@ -128,6 +140,10 @@
             "key": [
               "my-first-collection"
             ]
+          },
+          "published": {
+            "display_name": "Text 4",
+            "description": "Testing 4"
           }
         },
         {
@@ -159,8 +175,51 @@
             "key": [
               "my-first-collection"
             ]
+          },
+          "published": {
+            "display_name": "Blank Problem",
+            "description": "Problem"
           }
+        },
+        {
+          "display_name": "My first collection",
+          "block_id": "my-first-collection",
+          "description": "A collection for testing",
+          "id": 1,
+          "type": "collection",
+          "breadcrumbs": [
+            {
+              "display_name": "CS problems 2"
+            }
+          ],
+          "created": 1726740779.564664,
+          "modified": 1726840811.684142,
+          "usage_key": "lib-collection:OpenedX:CSPROB2:my-first-collection",
+          "context_key": "lib:OpenedX:CSPROB2",
+          "org": "OpenedX",
+          "access_id": 16,
+          "num_children": 5
+        },
+        {
+          "display_name": "My second collection",
+          "block_id": "my-second-collection",
+          "description": "A collection for testing",
+          "id": 2,
+          "type": "collection",
+          "breadcrumbs": [
+            {
+              "display_name": "CS problems 2"
+            }
+          ],
+          "created": 1726740779.564664,
+          "modified": 1726840811.684142,
+          "usage_key": "lib-collection:OpenedX:CSPROB2:my-second-collection",
+          "context_key": "lib:OpenedX:CSPROB2",
+          "org": "OpenedX",
+          "access_id": 16,
+          "num_children": 1
         }
+      
       ],
       "query": "",
       "processingTimeMs": 1,
@@ -184,35 +243,6 @@
         "content.problem_types": {}
       },
       "facetStats": {}
-    },
-    {
-      "indexUid": "studio_content",
-      "hits": [
-        {
-          "display_name": "My first collection",
-          "block_id": "my-first-collection",
-          "description": "A collection for testing",
-          "id": 1,
-          "type": "collection",
-          "breadcrumbs": [
-            {
-              "display_name": "CS problems 2"
-            }
-          ],
-          "created": 1726740779.564664,
-          "modified": 1726840811.684142,
-          "usage_key": "lib-collection:OpenedX:CSPROB2:collection-from-meilisearch",
-          "context_key": "lib:OpenedX:CSPROB2",
-          "org": "OpenedX",
-          "access_id": 16,
-          "num_children": 5
-        }
-      ],
-      "query": "",
-      "processingTimeMs": 0,
-      "limit": 1,
-      "offset": 0,
-      "estimatedTotalHits": 1
     }
   ]
 }

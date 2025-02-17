@@ -1,10 +1,10 @@
-import React from 'react';
+import { useSelector } from 'react-redux';
 import { getConfig } from '@edx/frontend-platform';
 import { useIntl } from '@edx/frontend-platform/i18n';
 import { StudioHeader } from '@edx/frontend-component-header';
 import { type Container, useToggle } from '@openedx/paragon';
-import { generatePath, useHref } from 'react-router-dom';
 
+import { getWaffleFlags } from '../data/selectors';
 import { SearchModal } from '../search-modal';
 import { useContentMenuItems, useSettingMenuItems, useToolsMenuItems } from './hooks';
 import messages from './messages';
@@ -31,7 +31,7 @@ const Header = ({
   containerProps = {},
 }: HeaderProps) => {
   const intl = useIntl();
-  const libraryHref = useHref('/library/:libraryId');
+  const waffleFlags = useSelector(getWaffleFlags);
 
   const [isShowSearchModalOpen, openSearchModal, closeSearchModal] = useToggle(false);
 
@@ -59,9 +59,12 @@ const Header = ({
     },
   ] : [];
 
-  const outlineLink = !isLibrary
-    ? `${studioBaseUrl}/course/${contextId}`
-    : generatePath(libraryHref, { libraryId: contextId });
+  const getOutlineLink = () => {
+    if (isLibrary) {
+      return `/library/${contextId}`;
+    }
+    return waffleFlags.useNewCourseOutlinePage ? `/course/${contextId}` : `${studioBaseUrl}/course/${contextId}`;
+  };
 
   return (
     <>
@@ -71,9 +74,10 @@ const Header = ({
         title={title}
         isHiddenMainMenu={isHiddenMainMenu}
         mainMenuDropdowns={mainMenuDropdowns}
-        outlineLink={outlineLink}
+        outlineLink={getOutlineLink()}
         searchButtonAction={meiliSearchEnabled ? openSearchModal : undefined}
         containerProps={containerProps}
+        isNewHomePage={waffleFlags.useNewHomePage}
       />
       {meiliSearchEnabled && (
         <SearchModal

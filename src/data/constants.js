@@ -1,5 +1,3 @@
-/* eslint-disable import/prefer-default-export */
-
 /**
  * Enum for request status.
  * @readonly
@@ -16,6 +14,13 @@ export const RequestStatus = /** @type {const} */ ({
   PARTIAL_FAILURE: 'partial failure',
   NOT_FOUND: 'not-found',
 });
+
+export const RequestFailureStatuses = [
+  RequestStatus.FAILED,
+  RequestStatus.DENIED,
+  RequestStatus.PARTIAL_FAILURE,
+  RequestStatus.NOT_FOUND,
+];
 
 /**
  * Team sizes enum

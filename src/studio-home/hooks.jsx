@@ -1,11 +1,13 @@
 import { useEffect, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
+import { getConfig } from '@edx/frontend-platform';
 
 import { RequestStatus } from '../data/constants';
 import { COURSE_CREATOR_STATES } from '../constants';
 import { getCourseData, getSavingStatus } from '../generic/data/selectors';
 import { fetchStudioHomeData } from './data/thunks';
+import { fetchWaffleFlags } from '../data/thunks';
 import {
   getLoadingStatuses,
   getSavingStatuses,
@@ -14,9 +16,10 @@ import {
 } from './data/selectors';
 import { updateSavingStatuses } from './data/slice';
 
-const useStudioHome = (isPaginated = false) => {
+const useStudioHome = () => {
   const location = useLocation();
   const dispatch = useDispatch();
+  const isPaginated = getConfig().ENABLE_HOME_PAGE_COURSE_API_V2;
   const studioHomeData = useSelector(getStudioHomeData);
   const studioHomeCoursesParams = useSelector(getStudioHomeCoursesParams);
   const { isFiltered } = studioHomeCoursesParams;
@@ -36,12 +39,13 @@ const useStudioHome = (isPaginated = false) => {
       dispatch(fetchStudioHomeData(location.search ?? ''));
       setShowNewCourseContainer(false);
     }
+    dispatch(fetchWaffleFlags());
   }, [location.search]);
 
   useEffect(() => {
     if (isPaginated) {
       const firstPage = 1;
-      dispatch(fetchStudioHomeData(location.search ?? '', false, { page: firstPage }, true));
+      dispatch(fetchStudioHomeData(location.search ?? '', false, { page: firstPage, order: 'display_name' }, true));
     }
   }, []);
 
@@ -68,6 +72,8 @@ const useStudioHome = (isPaginated = false) => {
     studioRequestEmail,
     inProcessCourseActions,
     courseCreatorStatus,
+    librariesV1Enabled,
+    librariesV2Enabled,
   } = studioHomeData;
 
   const isShowOrganizationDropdown = optimizationEnabled && courseCreatorStatus === COURSE_CREATOR_STATES.granted;
@@ -94,8 +100,9 @@ const useStudioHome = (isPaginated = false) => {
     hasAbilityToCreateNewCourse,
     isFiltered,
     setShowNewCourseContainer,
+    librariesV1Enabled,
+    librariesV2Enabled,
   };
 };
 
-// eslint-disable-next-line import/prefer-default-export
 export { useStudioHome };

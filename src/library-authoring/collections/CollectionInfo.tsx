@@ -5,32 +5,61 @@ import {
   Tab,
   Tabs,
 } from '@openedx/paragon';
-import { Link, useMatch } from 'react-router-dom';
+import { useCallback } from 'react';
 
-import type { ContentLibrary } from '../data/api';
+import { useComponentPickerContext } from '../common/context/ComponentPickerContext';
+import { useLibraryContext } from '../common/context/LibraryContext';
+import {
+  type CollectionInfoTab,
+  COLLECTION_INFO_TABS,
+  COMPONENT_INFO_TABS,
+  isCollectionInfoTab,
+  useSidebarContext,
+} from '../common/context/SidebarContext';
+import { useLibraryRoutes } from '../routes';
+import { ContentTagsDrawer } from '../../content-tags-drawer';
+import { buildCollectionUsageKey } from '../../generic/key-utils';
 import CollectionDetails from './CollectionDetails';
 import messages from './messages';
 
-interface CollectionInfoProps {
-  library: ContentLibrary,
-  collectionId: string,
-}
-
-const CollectionInfo = ({ library, collectionId }: CollectionInfoProps) => {
+const CollectionInfo = () => {
   const intl = useIntl();
-  const url = `/library/${library.id}/collection/${collectionId}/`;
-  const urlMatch = useMatch(url);
+
+  const { componentPickerMode } = useComponentPickerContext();
+  const { libraryId, setCollectionId } = useLibraryContext();
+  const { sidebarComponentInfo, sidebarTab, setSidebarTab } = useSidebarContext();
+
+  const tab: CollectionInfoTab = (
+    sidebarTab && isCollectionInfoTab(sidebarTab)
+  ) ? sidebarTab : COLLECTION_INFO_TABS.Manage;
+
+  const collectionId = sidebarComponentInfo?.id;
+  // istanbul ignore if: this should never happen
+  if (!collectionId) {
+    throw new Error('collectionId is required');
+  }
+
+  const collectionUsageKey = buildCollectionUsageKey(libraryId, collectionId);
+
+  const { insideCollection, navigateTo } = useLibraryRoutes();
+  const showOpenCollectionButton = !insideCollection || componentPickerMode;
+
+  const handleOpenCollection = useCallback(() => {
+    if (componentPickerMode) {
+      setCollectionId(collectionId);
+    } else {
+      navigateTo({ collectionId });
+    }
+  }, [componentPickerMode, navigateTo]);
 
   return (
     <Stack>
-      {!urlMatch && (
+      {showOpenCollectionButton && (
         <div className="d-flex flex-wrap">
           <Button
-            as={Link}
-            to={url}
+            onClick={handleOpenCollection}
             variant="outline-primary"
             className="m-1 text-nowrap flex-grow-1"
-            disabled={!!urlMatch}
           >
             {intl.formatMessage(messages.openCollectionButton)}
           </Button>
@@ -39,16 +68,18 @@ const CollectionInfo = ({ library, collectionId }: CollectionInfoProps) => {
       <Tabs
         variant="tabs"
         className="my-3 d-flex justify-content-around"
-        defaultActiveKey="manage"
+        defaultActiveKey={COMPONENT_INFO_TABS.Manage}
+        activeKey={tab}
+        onSelect={setSidebarTab}
       >
-        <Tab eventKey="manage" title={intl.formatMessage(messages.manageTabTitle)}>
-          Manage tab placeholder
-        </Tab>
-        <Tab eventKey="details" title={intl.formatMessage(messages.detailsTabTitle)}>
-          <CollectionDetails
-            library={library}
-            collectionId={collectionId}
+        <Tab eventKey={COMPONENT_INFO_TABS.Manage} title={intl.formatMessage(messages.manageTabTitle)}>
+          <ContentTagsDrawer
+            id={collectionUsageKey}
+            variant="component"
           />
+        </Tab>
+        <Tab eventKey={COMPONENT_INFO_TABS.Details} title={intl.formatMessage(messages.detailsTabTitle)}>
+          <CollectionDetails />
         </Tab>
       </Tabs>
     </Stack>

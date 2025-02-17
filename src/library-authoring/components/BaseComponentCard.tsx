@@ -1,23 +1,26 @@
 import React, { useMemo } from 'react';
 import {
+  Badge,
   Card,
   Container,
   Icon,
   Stack,
 } from '@openedx/paragon';
-
+import { useIntl } from '@edx/frontend-platform/i18n';
+import messages from './messages';
 import { getItemIcon, getComponentStyleColor } from '../../generic/block-type-utils';
 import TagCount from '../../generic/tag-count';
-import { BlockTypeLabel, ContentHitTags, Highlight } from '../../search-manager';
+import { BlockTypeLabel, type ContentHitTags, Highlight } from '../../search-manager';
 
 type BaseComponentCardProps = {
-  componentType: string,
-  displayName: string,
-  description: string,
-  numChildren?: number,
-  tags: ContentHitTags,
-  actions: React.ReactNode,
-  openInfoSidebar: () => void
+  componentType: string;
+  displayName: string;
+  description: string;
+  numChildren?: number;
+  tags: ContentHitTags;
+  actions: React.ReactNode;
+  hasUnpublishedChanges?: boolean;
+  onSelect: () => void
 };
 
 const BaseComponentCard = ({
@@ -27,7 +30,8 @@ const BaseComponentCard = ({
   numChildren,
   tags,
   actions,
-  openInfoSidebar,
+  onSelect,
+  ...props
 } : BaseComponentCardProps) => {
   const tagCount = useMemo(() => {
     if (!tags) {
@@ -38,15 +42,16 @@ const BaseComponentCard = ({
   }, [tags]);
 
   const componentIcon = getItemIcon(componentType);
+  const intl = useIntl();
 
   return (
     <Container className="library-component-card">
       <Card
         isClickable
-        onClick={openInfoSidebar}
+        onClick={onSelect}
         onKeyDown={(e: React.KeyboardEvent) => {
           if (['Enter', ' '].includes(e.key)) {
-            openInfoSidebar();
+            onSelect();
           }
         }}
       >
@@ -55,7 +60,12 @@ const BaseComponentCard = ({
           title={
             <Icon src={componentIcon} className="library-component-header-icon" />
           }
-          actions={actions}
+          actions={
+            // Wrap the actions in a div to prevent the card from being clicked when the actions are clicked
+            /* eslint-disable-next-line jsx-a11y/click-events-have-key-events,
+            jsx-a11y/no-static-element-interactions */
+            <div onClick={(e) => e.stopPropagation()}>{actions}</div>
+          }
         />
         <Card.Body>
           <Card.Section>
@@ -71,7 +81,8 @@ const BaseComponentCard = ({
             <div className="text-truncate h3 mt-2">
               <Highlight text={displayName} />
             </div>
-            <Highlight text={description} />
+            <Highlight text={description} /><br />
+            {props.hasUnpublishedChanges ? <Badge variant="warning">{intl.formatMessage(messages.unpublishedChanges)}</Badge> : null}
           </Card.Section>
         </Card.Body>
       </Card>

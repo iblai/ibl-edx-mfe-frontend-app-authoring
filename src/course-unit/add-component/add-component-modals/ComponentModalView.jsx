@@ -58,9 +58,11 @@ const ComponentModalView = ({
               const isDisplaySupportLabel = supportLegend.showLegend && supportLabels[componentTemplate.supportLevel];
 
               return (
-                <div className="d-flex justify-content-between w-100 mb-2.5 align-items-end">
+                <div
+                  key={componentTemplate.displayName}
+                  className="d-flex justify-content-between w-100 mb-2.5 align-items-end"
+                >
                   <Form.Radio
-                    key={componentTemplate.displayName}
                     className="add-component-modal-radio"
                     value={value}
                   >
@@ -70,7 +72,7 @@ const ComponentModalView = ({
                     <OverlayTrigger
                       placement="right"
                       overlay={(
-                        <Tooltip>
+                        <Tooltip id={`${componentTemplate.displayName}-support-tooltip`}>
                           {supportLabels[componentTemplate.supportLevel].tooltip}
                         </Tooltip>
                       )}

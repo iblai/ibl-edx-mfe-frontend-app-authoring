@@ -4,7 +4,7 @@ import type MockAdapter from 'axios-mock-adapter';
 import {
   initializeMocks, render as baseRender, screen, waitFor, waitForElementToBeRemoved, within,
 } from '../../testUtils';
-import { LibraryProvider } from '../common/context';
+import { LibraryProvider } from '../common/context/LibraryContext';
 import { type CollectionHit } from '../../search-manager';
 import CollectionCard from './CollectionCard';
 import messages from './messages';
@@ -27,14 +27,24 @@ const CollectionHitSample: CollectionHit = {
   created: 1722434322294,
   modified: 1722434322294,
   numChildren: 2,
+  published: {
+    numChildren: 1,
+  },
   tags: {},
 };
 
 let axiosMock: MockAdapter;
 let mockShowToast;
 
-const render = (ui: React.ReactElement) => baseRender(ui, {
-  extraWrapper: ({ children }) => <LibraryProvider libraryId="lib:Axim:TEST">{ children }</LibraryProvider>,
+const render = (ui: React.ReactElement, showOnlyPublished: boolean = false) => baseRender(ui, {
+  extraWrapper: ({ children }) => (
+    <LibraryProvider
+      libraryId="lib:Axim:TEST"
+      showOnlyPublished={showOnlyPublished}
+    >
+      {children}
+    </LibraryProvider>
+  ),
 });
 
 describe('<CollectionCard />', () => {
@@ -52,6 +62,14 @@ describe('<CollectionCard />', () => {
     expect(screen.queryByText('Collection (2)')).toBeInTheDocument();
   });
 
+  it('should render published content', () => {
+    render(<CollectionCard collectionHit={CollectionHitSample} />, true);
+
+    expect(screen.queryByText('Collection Display Formated Name')).toBeInTheDocument();
+    expect(screen.queryByText('Collection description')).toBeInTheDocument();
+    expect(screen.queryByText('Collection (1)')).toBeInTheDocument();
+  });
+
   it('should navigate to the collection if the open menu clicked', async () => {
     render(<CollectionCard collectionHit={CollectionHitSample} />);
 
@@ -63,7 +81,7 @@ describe('<CollectionCard />', () => {
     const openMenuItem = screen.getByRole('link', { name: 'Open' });
     expect(openMenuItem).toBeInTheDocument();
 
-    expect(openMenuItem).toHaveAttribute('href', '/library/lb:org1:Demo_Course/collection/collection-display-name/');
+    expect(openMenuItem).toHaveAttribute('href', '/library/lb:org1:Demo_Course/collection/collection-display-name');
   });
 
   it('should show confirmation box, delete collection and show toast to undo deletion', async () => {

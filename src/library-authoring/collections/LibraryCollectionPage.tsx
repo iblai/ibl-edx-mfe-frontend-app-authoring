@@ -2,17 +2,18 @@ import { useEffect } from 'react';
 import { StudioFooter } from '@edx/frontend-component-footer';
 import { useIntl } from '@edx/frontend-platform/i18n';
 import {
-  Badge,
+  ActionRow,
   Button,
   Breadcrumb,
   Container,
   Icon,
-  IconButton,
-  Stack,
 } from '@openedx/paragon';
-import { Add, InfoOutline } from '@openedx/paragon/icons';
-import { Link, useParams } from 'react-router-dom';
+import { Add, ArrowBack, InfoOutline } from '@openedx/paragon/icons';
+import classNames from 'classnames';
+import { Helmet } from 'react-helmet';
+import { Link } from 'react-router-dom';
 
+import { useLibraryRoutes } from '../routes';
 import Loading from '../../generic/Loading';
 import ErrorAlert from '../../generic/alert-error';
 import SubHeader from '../../generic/sub-header/SubHeader';
@@ -21,90 +22,95 @@ import NotFoundAlert from '../../generic/NotFoundAlert';
 import {
   ClearFiltersButton,
   FilterByBlockType,
+  FilterByPublished,
   FilterByTags,
   SearchContextProvider,
   SearchKeywordsField,
   SearchSortWidget,
 } from '../../search-manager';
+import { SubHeaderTitle } from '../LibraryAuthoringPage';
 import { useCollection, useContentLibrary } from '../data/apiHooks';
-import { useLibraryContext } from '../common/context';
+import { useComponentPickerContext } from '../common/context/ComponentPickerContext';
+import { useLibraryContext } from '../common/context/LibraryContext';
+import { SidebarBodyComponentId, useSidebarContext } from '../common/context/SidebarContext';
 import messages from './messages';
 import { LibrarySidebar } from '../library-sidebar';
 import LibraryCollectionComponents from './LibraryCollectionComponents';
 
-const HeaderActions = ({ canEditLibrary }: { canEditLibrary: boolean; }) => {
+const HeaderActions = () => {
   const intl = useIntl();
-  const {
-    openAddContentSidebar,
-  } = useLibraryContext();
 
-  if (!canEditLibrary) {
-    return null;
+  const { componentPickerMode } = useComponentPickerContext();
+  const { collectionId, readOnly } = useLibraryContext();
+  const {
+    closeLibrarySidebar,
+    openAddContentSidebar,
+    openCollectionInfoSidebar,
+    sidebarComponentInfo,
+  } = useSidebarContext();
+  const { navigateTo } = useLibraryRoutes();
+
+  // istanbul ignore if: this should never happen
+  if (!collectionId) {
+    throw new Error('it should not be possible to render HeaderActions without a collectionId');
   }
+
+  const infoSidebarIsOpen = sidebarComponentInfo?.type === SidebarBodyComponentId.CollectionInfo
+    && sidebarComponentInfo?.id === collectionId;
+
+  const handleOnClickInfoSidebar = () => {
+    if (infoSidebarIsOpen) {
+      closeLibrarySidebar();
+    } else {
+      openCollectionInfoSidebar(collectionId);
+    }
+
+    if (!componentPickerMode) {
+      navigateTo({ collectionId });
+    }
+  };
 
   return (
     <div className="header-actions">
       <Button
-        className="ml-1"
-        iconBefore={Add}
-        variant="primary rounded-0"
-        onClick={openAddContentSidebar}
-        disabled={!canEditLibrary}
+        className={classNames('mr-1', {
+          'normal-border': !infoSidebarIsOpen,
+          'open-border': infoSidebarIsOpen,
+        })}
+        iconBefore={InfoOutline}
+        variant="outline-primary rounded-0"
+        onClick={handleOnClickInfoSidebar}
       >
-        {intl.formatMessage(messages.newContentButton)}
+        {intl.formatMessage(messages.collectionInfoButton)}
       </Button>
-    </div>
-  );
-};
-
-const SubHeaderTitle = ({
-  title,
-  canEditLibrary,
-  infoClickHandler,
-}: {
-  title: string;
-  canEditLibrary: boolean;
-  infoClickHandler: () => void;
-}) => {
-  const intl = useIntl();
-
-  return (
-    <Stack direction="vertical">
-      <Stack direction="horizontal" gap={2}>
-        {title}
-        <IconButton
-          src={InfoOutline}
-          iconAs={Icon}
-          alt={intl.formatMessage(messages.collectionInfoButton)}
-          onClick={infoClickHandler}
-          variant="primary"
-        />
-      </Stack>
-      { !canEditLibrary && (
-        <div>
-          <Badge variant="primary" style={{ fontSize: '50%' }}>
-            {intl.formatMessage(messages.readOnlyBadge)}
-          </Badge>
-        </div>
+      {!componentPickerMode && (
+        <Button
+          className="ml-1"
+          iconBefore={Add}
+          variant="primary rounded-0"
+          onClick={openAddContentSidebar}
+          disabled={readOnly}
+        >
+          {intl.formatMessage(messages.newContentButton)}
+        </Button>
       )}
-    </Stack>
+    </div>
   );
 };
 
 const LibraryCollectionPage = () => {
   const intl = useIntl();
 
-  const { libraryId, collectionId } = useParams();
+  const { libraryId, collectionId } = useLibraryContext();
 
   if (!collectionId || !libraryId) {
     // istanbul ignore next - This shouldn't be possible; it's just here to satisfy the type checker.
     throw new Error('Rendered without collectionId or libraryId URL parameter');
   }
 
-  const {
-    sidebarBodyComponent,
-    openCollectionInfoSidebar,
-  } = useLibraryContext();
+  const { componentPickerMode } = useComponentPickerContext();
+  const { showOnlyPublished, setCollectionId, componentId } = useLibraryContext();
+  const { sidebarComponentInfo, openInfoSidebar } = useSidebarContext();
 
   const {
     data: collectionData,
@@ -114,8 +120,8 @@ const LibraryCollectionPage = () => {
   } = useCollection(libraryId, collectionId);
 
   useEffect(() => {
-    openCollectionInfoSidebar(collectionId);
-  }, [collectionData]);
+    openInfoSidebar(componentId, collectionId);
+  }, []);
 
   const { data: libraryData, isLoading: isLibLoading } = useContentLibrary(libraryId);
 
@@ -133,70 +139,92 @@ const LibraryCollectionPage = () => {
     return <ErrorAlert error={error} />;
   }
 
-  const breadcrumbs = [
-    {
-      label: libraryData.title,
-      to: `/library/${libraryId}`,
-    },
-    {
-      label: intl.formatMessage(messages.allCollections),
-      to: `/library/${libraryId}/collections`,
-    },
-    // Adding empty breadcrumb to add the last `>` spacer.
-    {
-      label: '',
-      to: '',
-    },
-  ];
+  const breadcumbs = !componentPickerMode ? (
+    <Breadcrumb
+      ariaLabel={intl.formatMessage(messages.breadcrumbsAriaLabel)}
+      links={[
+        {
+          label: libraryData.title,
+          to: `/library/${libraryId}`,
+        },
+        {
+          label: intl.formatMessage(messages.allCollections),
+          to: `/library/${libraryId}/collections`,
+        },
+        // Adding empty breadcrumb to add the last `>` spacer.
+        {
+          label: '',
+          to: '',
+        },
+      ]}
+      linkAs={Link}
+    />
+  ) : (
+    <Breadcrumb
+      ariaLabel={intl.formatMessage(messages.breadcrumbsAriaLabel)}
+      links={[
+        {
+          label: '',
+          to: '',
+        },
+        {
+          label: intl.formatMessage(messages.returnToLibrary),
+          onClick: () => { setCollectionId(undefined); },
+        },
+      ]}
+      spacer={<Icon src={ArrowBack} size="sm" />}
+      linkAs={Link}
+    />
+  );
+
+  const extraFilter = [`context_key = "${libraryId}"`, `collections.key = "${collectionId}"`];
+  if (showOnlyPublished) {
+    extraFilter.push('last_published IS NOT NULL');
+  }
 
   return (
     <div className="d-flex">
       <div className="flex-grow-1">
-        <Header
-          number={libraryData.slug}
-          title={libraryData.title}
-          org={libraryData.org}
-          contextId={libraryId}
-          isLibrary
-        />
-        <Container size="xl" className="px-4 mt-4 mb-5 library-authoring-page">
+        <Helmet><title>{libraryData.title} | {process.env.SITE_NAME}</title></Helmet>
+        {!componentPickerMode && (
+          <Header
+            number={libraryData.slug}
+            title={libraryData.title}
+            org={libraryData.org}
+            contextId={libraryId}
+            isLibrary
+            containerProps={{
+              size: undefined,
+            }}
+          />
+        )}
+        <Container className="px-4 mt-4 mb-5 library-authoring-page">
           <SearchContextProvider
-            extraFilter={[`context_key = "${libraryId}"`, `collections.key = "${collectionId}"`]}
-            overrideQueries={{ collections: { limit: 0 } }}
+            extraFilter={extraFilter}
           >
             <SubHeader
-              title={(
-                <SubHeaderTitle
-                  title={collectionData.title}
-                  canEditLibrary={libraryData.canEditLibrary}
-                  infoClickHandler={() => openCollectionInfoSidebar(collectionId)}
-                />
-              )}
-              breadcrumbs={(
-                <Breadcrumb
-                  ariaLabel={intl.formatMessage(messages.breadcrumbsAriaLabel)}
-                  links={breadcrumbs}
-                  linkAs={Link}
-                />
-              )}
-              headerActions={<HeaderActions canEditLibrary={libraryData.canEditLibrary} />}
+              title={<SubHeaderTitle title={collectionData.title} />}
+              breadcrumbs={breadcumbs}
+              headerActions={<HeaderActions />}
+              hideBorder
             />
-            <SearchKeywordsField className="w-50" placeholder={intl.formatMessage(messages.searchPlaceholder)} />
-            <div className="d-flex mt-3 mb-4 align-items-center">
+            <ActionRow className="my-3">
+              <SearchKeywordsField className="mr-3" />
               <FilterByTags />
               <FilterByBlockType />
+              <FilterByPublished />
               <ClearFiltersButton />
-              <div className="flex-grow-1" />
+              <ActionRow.Spacer />
               <SearchSortWidget />
-            </div>
+            </ActionRow>
             <LibraryCollectionComponents />
           </SearchContextProvider>
         </Container>
-        <StudioFooter />
+        {!componentPickerMode && <StudioFooter containerProps={{ size: undefined }} />}
       </div>
-      { !!sidebarBodyComponent && (
+      {!!sidebarComponentInfo?.type && (
         <div className="library-authoring-sidebar box-shadow-left-1 bg-white" data-testid="library-sidebar">
-          <LibrarySidebar library={libraryData} />
+          <LibrarySidebar />
         </div>
       )}
     </div>

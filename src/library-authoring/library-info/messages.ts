@@ -11,6 +11,11 @@ const messages = defineMessages({
     defaultMessage: 'Organization',
     description: 'Title for Organization section in Library info sidebar.',
   },
+  libraryTeamButtonTitle: {
+    id: 'course-authoring.library-authoring.sidebar.info.library-team.button.title',
+    defaultMessage: 'Manage Access',
+    description: 'Title to use for the button that allows viewing/editing the Library Team user access.',
+  },
   libraryHistorySectionTitle: {
     id: 'course-authoring.library-authoring.sidebar.info.history.title',
     defaultMessage: 'Library History',
@@ -55,6 +60,21 @@ const messages = defineMessages({
     id: 'course-authoring.library-authoring.library.update.error',
     defaultMessage: 'There was an error updating the library',
     description: 'Message when there is an error when updating the library',
+  },
+  discardChangesTitle: {
+    id: 'course-authoring.library-authoring.library.discardChangesTitle',
+    defaultMessage: 'Discard changes',
+    description: 'Title text for confirmation modal shown before discard library changes',
+  },
+  discardChangesDescription: {
+    id: 'course-authoring.library-authoring.library.discardChangesDescription',
+    defaultMessage: 'Are you sure you want to discard all unpublished changes in this library? This will include changes made by other users',
+    description: 'Description text for confirmation modal shown before discard library changes',
+  },
+  discardChangesDefaultBtnLabel: {
+    id: 'course-authoring.library-authoring.library.discardChangesDefaultBtnLabel',
+    defaultMessage: 'Discard',
+    description: 'Button text for confirmation modal shown before discard library changes',
   },
 });
 

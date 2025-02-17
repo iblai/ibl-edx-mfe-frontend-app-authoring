@@ -14,9 +14,12 @@ import mockEmptyResult from '../search-modal/__mocks__/empty-search-result.json'
 import {
   mockContentLibrary,
   mockGetCollectionMetadata,
+  mockGetLibraryTeam,
   mockXBlockFields,
 } from './data/api.mocks';
 import { mockContentSearchConfig } from '../search-manager/data/api.mock';
+import { studioHomeMock } from '../studio-home/__mocks__';
+import { getStudioHomeApiUrl } from '../studio-home/data/api';
 import { mockBroadcastChannel } from '../generic/data/api.mock';
 import { LibraryLayout } from '.';
 import { getLibraryCollectionsApiUrl } from './data/api';
@@ -24,6 +27,7 @@ import { getLibraryCollectionsApiUrl } from './data/api';
 mockGetCollectionMetadata.applyMock();
 mockContentSearchConfig.applyMock();
 mockContentLibrary.applyMock();
+mockGetLibraryTeam.applyMock();
 mockXBlockFields.applyMock();
 mockBroadcastChannel();
 
@@ -38,46 +42,19 @@ const returnEmptyResult = (_url, req) => {
   // We have to replace the query (search keywords) in the mock results with the actual query,
   // because otherwise we may have an inconsistent state that causes more queries and unexpected results.
   mockEmptyResult.results[0].query = query;
-  mockEmptyResult.results[2].query = query;
   // And fake the required '_formatted' fields; it contains the highlighting <mark>...</mark> around matched words
   // eslint-disable-next-line no-underscore-dangle, no-param-reassign
   mockEmptyResult.results[0]?.hits.forEach((hit) => { hit._formatted = { ...hit }; });
-  // eslint-disable-next-line no-underscore-dangle, no-param-reassign
-  mockEmptyResult.results[2]?.hits.forEach((hit) => { hit._formatted = { ...hit }; });
   return mockEmptyResult;
-};
-
-/**
- * Returns 2 components from the search query.
- * This lets us test that the StudioHome "View All" button is hidden when a
- * low number of search results are shown (<=4 by default).
-*/
-const returnLowNumberResults = (_url, req) => {
-  const requestData = JSON.parse(req.body?.toString() ?? '');
-  const query = requestData?.queries[0]?.q ?? '';
-  const newMockResult = { ...mockResult };
-  // We have to replace the query (search keywords) in the mock results with the actual query,
-  // because otherwise we may have an inconsistent state that causes more queries and unexpected results.
-  newMockResult.results[0].query = query;
-  // Limit number of results to just 2
-  newMockResult.results[0].hits = mockResult.results[0]?.hits.slice(0, 2);
-  newMockResult.results[2].hits = mockResult.results[2]?.hits.slice(0, 2);
-  newMockResult.results[0].estimatedTotalHits = 2;
-  newMockResult.results[2].estimatedTotalHits = 2;
-  // And fake the required '_formatted' fields; it contains the highlighting <mark>...</mark> around matched words
-  // eslint-disable-next-line no-underscore-dangle, no-param-reassign
-  newMockResult.results[0]?.hits.forEach((hit) => { hit._formatted = { ...hit }; });
-  // eslint-disable-next-line no-underscore-dangle, no-param-reassign
-  newMockResult.results[2]?.hits.forEach((hit) => { hit._formatted = { ...hit }; });
-  return newMockResult;
 };
 
 const path = '/library/:libraryId/*';
 const libraryTitle = mockContentLibrary.libraryData.title;
 
 describe('<LibraryAuthoringPage />', () => {
-  beforeEach(() => {
-    initializeMocks();
+  beforeEach(async () => {
+    const { axiosMock } = initializeMocks();
+    axiosMock.onGet(getStudioHomeApiUrl()).reply(200, studioHomeMock);
 
     // The Meilisearch client-side API uses fetch, not Axios.
     fetchMock.mockReset();
@@ -87,11 +64,12 @@ describe('<LibraryAuthoringPage />', () => {
       // We have to replace the query (search keywords) in the mock results with the actual query,
       // because otherwise Instantsearch will update the UI and change the query,
       // leading to unexpected results in the test cases.
-      mockResult.results[0].query = query;
+      const newMockResult = { ...mockResult };
+      newMockResult.results[0].query = query;
       // And fake the required '_formatted' fields; it contains the highlighting <mark>...</mark> around matched words
       // eslint-disable-next-line no-underscore-dangle, no-param-reassign
-      mockResult.results[0]?.hits.forEach((hit) => { hit._formatted = { ...hit }; });
-      return mockResult;
+      newMockResult.results[0]?.hits.forEach((hit) => { hit._formatted = { ...hit }; });
+      return newMockResult;
     });
   });
 
@@ -130,35 +108,29 @@ describe('<LibraryAuthoringPage />', () => {
 
     expect(screen.queryByText('You have not added any content to this library yet.')).not.toBeInTheDocument();
 
-    // "Recently Modified" header + sort shown
-    expect(screen.getAllByText('Recently Modified').length).toEqual(2);
-    expect(screen.getByText('Collections (6)')).toBeInTheDocument();
-    expect(screen.getByText('Components (10)')).toBeInTheDocument();
+    expect(screen.getAllByText('Recently Modified').length).toEqual(1);
     expect((await screen.findAllByText('Introduction to Testing'))[0]).toBeInTheDocument();
+
+    // Search box should not have focus on page load
+    const searchBox = screen.getByRole('searchbox');
+    expect(searchBox).not.toHaveFocus();
 
     // Navigate to the components tab
     fireEvent.click(screen.getByRole('tab', { name: 'Components' }));
     // "Recently Modified" default sort shown
     expect(screen.getAllByText('Recently Modified').length).toEqual(1);
-    expect(screen.queryByText('Collections (6)')).not.toBeInTheDocument();
-    expect(screen.queryByText('Components (10)')).not.toBeInTheDocument();
 
     // Navigate to the collections tab
     fireEvent.click(screen.getByRole('tab', { name: 'Collections' }));
     // "Recently Modified" default sort shown
     expect(screen.getAllByText('Recently Modified').length).toEqual(1);
-    expect(screen.queryByText('Collections (6)')).not.toBeInTheDocument();
-    expect(screen.queryByText('Components (10)')).not.toBeInTheDocument();
     expect(screen.queryByText('There are 10 components in this library')).not.toBeInTheDocument();
     expect((await screen.findAllByText('Collection 1'))[0]).toBeInTheDocument();
 
     // Go back to Home tab
     // This step is necessary to avoid the url change leak to other tests
-    fireEvent.click(screen.getByRole('tab', { name: 'Home' }));
-    // "Recently Modified" header + sort shown
-    expect(screen.getAllByText('Recently Modified').length).toEqual(2);
-    expect(screen.getByText('Collections (6)')).toBeInTheDocument();
-    expect(screen.getByText('Components (10)')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('tab', { name: 'All Content' }));
+    expect(screen.getAllByText('Recently Modified').length).toEqual(1);
   });
 
   it('shows a library without components and collections', async () => {
@@ -169,7 +141,7 @@ describe('<LibraryAuthoringPage />', () => {
     expect((await screen.findAllByText(libraryTitle))[0]).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('tab', { name: 'Collections' }));
-    expect(screen.getByText('You have not added any collections to this library yet.')).toBeInTheDocument();
+    expect(await screen.findByText('You have not added any collections to this library yet.')).toBeInTheDocument();
 
     // Open Create collection modal
     const addCollectionButton = screen.getByRole('button', { name: /add collection/i });
@@ -182,8 +154,8 @@ describe('<LibraryAuthoringPage />', () => {
     fireEvent.click(cancelButton);
     expect(collectionModalHeading).not.toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole('tab', { name: 'Home' }));
-    expect(screen.getByText('You have not added any content to this library yet.')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('tab', { name: 'All Content' }));
+    expect(await screen.findByText('You have not added any content to this library yet.')).toBeInTheDocument();
 
     const addComponentButton = screen.getByRole('button', { name: /add component/i });
     fireEvent.click(addComponentButton);
@@ -228,19 +200,19 @@ describe('<LibraryAuthoringPage />', () => {
     // should not be impacted by the search
     await waitFor(() => { expect(fetchMock).toHaveFetchedTimes(2, searchEndpoint, 'post'); });
 
-    expect(screen.getByText('No matching components found in this library.')).toBeInTheDocument();
+    expect(await screen.findByText('No matching components found in this library.')).toBeInTheDocument();
 
     // Navigate to the components tab
     fireEvent.click(screen.getByRole('tab', { name: 'Components' }));
-    expect(screen.getByText('No matching components found in this library.')).toBeInTheDocument();
+    expect(await screen.findByText('No matching components found in this library.')).toBeInTheDocument();
 
     // Navigate to the collections tab
     fireEvent.click(screen.getByRole('tab', { name: 'Collections' }));
-    expect(screen.getByText('No matching collections found in this library.')).toBeInTheDocument();
+    expect(await screen.findByText('No matching collections found in this library.')).toBeInTheDocument();
 
     // Go back to Home tab
     // This step is necessary to avoid the url change leak to other tests
-    fireEvent.click(screen.getByRole('tab', { name: 'Home' }));
+    fireEvent.click(screen.getByRole('tab', { name: 'All Content' }));
   });
 
   it('should open and close new content sidebar', async () => {
@@ -304,66 +276,22 @@ describe('<LibraryAuthoringPage />', () => {
     expect(screen.queryByText('(Never Published)')).not.toBeInTheDocument();
   });
 
-  it('show the "View All" button when viewing library with many components', async () => {
+  it('should show "Manage Access" button in Library Info that opens the Library Team modal', async () => {
     await renderLibraryPage();
+    const manageAccess = screen.getByRole('button', { name: /manage access/i });
 
-    expect(screen.getByText('Content library')).toBeInTheDocument();
-    expect((await screen.findAllByText(libraryTitle))[0]).toBeInTheDocument();
+    expect(manageAccess).not.toBeDisabled();
+    fireEvent.click(manageAccess);
 
-    // "Recently Modified" header + sort shown
-    await waitFor(() => { expect(screen.getAllByText('Recently Modified').length).toEqual(2); });
-    expect(screen.getByText('Collections (6)')).toBeInTheDocument();
-    expect(screen.getByText('Components (10)')).toBeInTheDocument();
-    expect(screen.getAllByText('Introduction to Testing')[0]).toBeInTheDocument();
-    expect(screen.queryByText('You have not added any content to this library yet.')).not.toBeInTheDocument();
-
-    // There should be two "View All" button, since the Components and Collections count
-    // are above the preview limit (4)
-    expect(screen.getAllByText('View All').length).toEqual(2);
-
-    // Clicking on first "View All" button should navigate to the Collections tab
-    fireEvent.click(screen.getAllByText('View All')[0]);
-    // "Recently Modified" default sort shown
-    expect(screen.getAllByText('Recently Modified').length).toEqual(1);
-    expect(screen.queryByText('Collections (6)')).not.toBeInTheDocument();
-    expect(screen.queryByText('Components (10)')).not.toBeInTheDocument();
-    expect(screen.getByText('Collection 1')).toBeInTheDocument();
-
-    fireEvent.click(screen.getByRole('tab', { name: 'Home' }));
-    // Clicking on second "View All" button should navigate to the Components tab
-    fireEvent.click(screen.getAllByText('View All')[1]);
-    // "Recently Modified" default sort shown
-    expect(screen.getAllByText('Recently Modified').length).toEqual(1);
-    expect(screen.queryByText('Collections (6)')).not.toBeInTheDocument();
-    expect(screen.queryByText('Components (10)')).not.toBeInTheDocument();
-    expect(screen.getAllByText('Introduction to Testing')[0]).toBeInTheDocument();
-
-    // Go back to Home tab
-    // This step is necessary to avoid the url change leak to other tests
-    fireEvent.click(screen.getByRole('tab', { name: 'Home' }));
-    // "Recently Modified" header + sort shown
-    expect(screen.getAllByText('Recently Modified').length).toEqual(2);
-    expect(screen.getByText('Collections (6)')).toBeInTheDocument();
-    expect(screen.getByText('Components (10)')).toBeInTheDocument();
+    expect(await screen.findByText('Library Team')).toBeInTheDocument();
   });
 
-  it('should not show the "View All" button when viewing library with low number of components', async () => {
-    fetchMock.post(searchEndpoint, returnLowNumberResults, { overwriteRoutes: true });
-    await renderLibraryPage();
+  it('should not show "Manage Access" button in Library Info to users who cannot edit the library', async () => {
+    const libraryId = mockContentLibrary.libraryIdReadOnly;
+    render(<LibraryLayout />, { path, params: { libraryId } });
 
-    expect(screen.getByText('Content library')).toBeInTheDocument();
-    expect((await screen.findAllByText(libraryTitle))[0]).toBeInTheDocument();
-
-    // "Recently Modified" header + sort shown
-    await waitFor(() => { expect(screen.getAllByText('Recently Modified').length).toEqual(2); });
-    expect(screen.getByText('Collections (2)')).toBeInTheDocument();
-    expect(screen.getByText('Components (2)')).toBeInTheDocument();
-    expect(screen.getAllByText('Introduction to Testing')[0]).toBeInTheDocument();
-    expect(screen.queryByText('You have not added any content to this library yet.')).not.toBeInTheDocument();
-
-    // There should not be any "View All" button on page since Components count
-    // is less than the preview limit (4)
-    expect(screen.queryByText('View All')).not.toBeInTheDocument();
+    const manageAccess = screen.queryByRole('button', { name: /manage access/i });
+    expect(manageAccess).not.toBeInTheDocument();
   });
 
   it('sorts library components', async () => {
@@ -420,7 +348,7 @@ describe('<LibraryAuthoringPage />', () => {
 
     // Re-selecting the previous sort option resets sort to default "Recently Modified"
     await testSortOption('Recently Published', 'modified:desc', true);
-    expect(screen.getAllByText('Recently Modified').length).toEqual(3);
+    expect(screen.getAllByText('Recently Modified').length).toEqual(2);
 
     // Enter a keyword into the search box
     const searchBox = screen.getByRole('searchbox');
@@ -438,12 +366,11 @@ describe('<LibraryAuthoringPage />', () => {
   });
 
   it('should open and close the component sidebar', async () => {
-    const mockResult0 = mockResult.results[0].hits[0];
+    const mockResult0 = { ...mockResult }.results[0].hits[0];
     const displayName = 'Introduction to Testing';
     expect(mockResult0.display_name).toStrictEqual(displayName);
     await renderLibraryPage();
 
-    // Click on the first component. It should appear twice, in both "Recently Modified" and "Components"
     fireEvent.click((await screen.findAllByText(displayName))[0]);
 
     const sidebar = screen.getByTestId('library-sidebar');
@@ -458,11 +385,36 @@ describe('<LibraryAuthoringPage />', () => {
     await waitFor(() => expect(screen.queryByTestId('library-sidebar')).not.toBeInTheDocument());
   });
 
+  it('should open component sidebar, showing manage tab on clicking add to collection menu item', async () => {
+    const mockResult0 = { ...mockResult }.results[0].hits[0];
+    const displayName = 'Introduction to Testing';
+    expect(mockResult0.display_name).toStrictEqual(displayName);
+    await renderLibraryPage();
+
+    waitFor(() => expect(screen.getAllByTestId('component-card-menu-toggle').length).toBeGreaterThan(0));
+
+    // Open menu
+    fireEvent.click((await screen.findAllByTestId('component-card-menu-toggle'))[0]);
+    // Click add to collection
+    fireEvent.click(screen.getByRole('button', { name: 'Add to collection' }));
+
+    const sidebar = screen.getByTestId('library-sidebar');
+
+    const { getByRole, queryByText } = within(sidebar);
+
+    await waitFor(() => expect(queryByText(displayName)).toBeInTheDocument());
+    expect(getByRole('tab', { selected: true })).toHaveTextContent('Manage');
+    const closeButton = getByRole('button', { name: /close/i });
+    fireEvent.click(closeButton);
+
+    await waitFor(() => expect(screen.queryByTestId('library-sidebar')).not.toBeInTheDocument());
+  });
+
   it('should open and close the collection sidebar', async () => {
     await renderLibraryPage();
 
-    // Click on the first component. It could appear twice, in both "Recently Modified" and "Collections"
-    fireEvent.click((await screen.findAllByText('Collection 1'))[0]);
+    // Click on the first collection
+    fireEvent.click((await screen.findByText('Collection 1')));
 
     const sidebar = screen.getByTestId('library-sidebar');
 
@@ -475,6 +427,31 @@ describe('<LibraryAuthoringPage />', () => {
     fireEvent.click(closeButton);
 
     await waitFor(() => expect(screen.queryByTestId('library-sidebar')).not.toBeInTheDocument());
+  });
+
+  it('should preserve the tab while switching from a component to a collection', async () => {
+    await renderLibraryPage();
+
+    // Click on the first collection
+    fireEvent.click((await screen.findByText('Collection 1')));
+
+    // Click on the Details tab
+    fireEvent.click(screen.getByRole('tab', { name: 'Details' }));
+
+    // Change to a component
+    fireEvent.click((await screen.findAllByText('Introduction to Testing'))[0]);
+
+    // Check that the Details tab is still selected
+    expect(screen.getByRole('tab', { name: 'Details' })).toHaveAttribute('aria-selected', 'true');
+
+    // Click on the Previews tab
+    fireEvent.click(screen.getByRole('tab', { name: 'Preview' }));
+
+    // Switch back to the collection
+    fireEvent.click((await screen.findByText('Collection 1')));
+
+    // The Manage (default) tab should be selected because the collection does not have a Preview tab
+    expect(screen.getByRole('tab', { name: 'Manage' })).toHaveAttribute('aria-selected', 'true');
   });
 
   it('can filter by capa problem type', async () => {
@@ -499,7 +476,7 @@ describe('<LibraryAuthoringPage />', () => {
     expect(showProbTypesSubmenuBtn).not.toBeNull();
     fireEvent.click(showProbTypesSubmenuBtn!);
 
-    const validateSubmenu = async (submenuText : string) => {
+    const validateSubmenu = async (submenuText: string) => {
       const submenu = screen.getByText(submenuText);
       expect(submenu).toBeInTheDocument();
       fireEvent.click(submenu);
@@ -528,9 +505,18 @@ describe('<LibraryAuthoringPage />', () => {
       // eslint-disable-next-line no-await-in-loop
       await validateSubmenu(key);
     }
+  });
+
+  it('can filter by block type', async () => {
+    await renderLibraryPage();
+
+    // Ensure the search endpoint is called
+    await waitFor(() => { expect(fetchMock).toHaveFetchedTimes(1, searchEndpoint, 'post'); });
+    const filterButton = screen.getByRole('button', { name: /type/i });
+    fireEvent.click(filterButton);
 
     // Validate click on Problem type
-    const problemMenu = screen.getByText('Problem');
+    const problemMenu = screen.getAllByText('Problem')[0];
     expect(problemMenu).toBeInTheDocument();
     fireEvent.click(problemMenu);
     await waitFor(() => {
@@ -551,15 +537,13 @@ describe('<LibraryAuthoringPage />', () => {
     });
 
     // Validate clear filters
-    const submenu = screen.getByText('Checkboxes');
-    expect(submenu).toBeInTheDocument();
-    fireEvent.click(submenu);
+    fireEvent.click(problemMenu);
 
-    const clearFitlersButton = screen.getByRole('button', { name: /clear filters/i });
+    const clearFitlersButton = screen.getByText('Clear Filters');
     fireEvent.click(clearFitlersButton);
     await waitFor(() => {
       expect(fetchMock).toHaveBeenLastCalledWith(searchEndpoint, {
-        body: expect.not.stringContaining(`content.problem_types = ${problemTypes.Checkboxes}`),
+        body: expect.not.stringContaining('block_type = problem'),
         method: 'POST',
         headers: expect.anything(),
       });
@@ -598,7 +582,8 @@ describe('<LibraryAuthoringPage />', () => {
     expect(screen.getByText(/add content/i)).toBeInTheDocument();
 
     // Open New collection Modal
-    const newCollectionButton = screen.getAllByRole('button', { name: /collection/i })[4];
+    const sidebar = screen.getByTestId('library-sidebar');
+    const newCollectionButton = within(sidebar).getAllByRole('button', { name: /collection/i })[0];
     fireEvent.click(newCollectionButton);
     const collectionModalHeading = await screen.findByRole('heading', { name: /new collection/i });
     expect(collectionModalHeading).toBeInTheDocument();
@@ -642,7 +627,8 @@ describe('<LibraryAuthoringPage />', () => {
     expect(screen.getByText(/add content/i)).toBeInTheDocument();
 
     // Open New collection Modal
-    const newCollectionButton = screen.getAllByRole('button', { name: /collection/i })[4];
+    const sidebar = screen.getByTestId('library-sidebar');
+    const newCollectionButton = within(sidebar).getAllByRole('button', { name: /collection/i })[0];
     fireEvent.click(newCollectionButton);
     const collectionModalHeading = await screen.findByRole('heading', { name: /new collection/i });
     expect(collectionModalHeading).toBeInTheDocument();
@@ -675,7 +661,8 @@ describe('<LibraryAuthoringPage />', () => {
     expect(screen.getByText(/add content/i)).toBeInTheDocument();
 
     // Open New collection Modal
-    const newCollectionButton = screen.getAllByRole('button', { name: /collection/i })[4];
+    const sidebar = screen.getByTestId('library-sidebar');
+    const newCollectionButton = within(sidebar).getAllByRole('button', { name: /collection/i })[0];
     fireEvent.click(newCollectionButton);
     const collectionModalHeading = await screen.findByRole('heading', { name: /new collection/i });
     expect(collectionModalHeading).toBeInTheDocument();
@@ -690,19 +677,146 @@ describe('<LibraryAuthoringPage />', () => {
     fireEvent.click(createButton);
   });
 
-  it('shows both components and collections in recently modified section', async () => {
+  it('shows a single block when usageKey query param is set', async () => {
+    render(<LibraryLayout />, {
+      path,
+      routerProps: {
+        initialEntries: [
+          `/library/${mockContentLibrary.libraryId}/components?usageKey=${mockXBlockFields.usageKeyHtml}`,
+        ],
+      },
+    });
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenLastCalledWith(searchEndpoint, {
+        body: expect.stringContaining(mockXBlockFields.usageKeyHtml),
+        headers: expect.anything(),
+        method: 'POST',
+      });
+    });
+    expect(screen.queryByPlaceholderText('Displaying single block, clear filters to search')).toBeInTheDocument();
+    const { displayName } = mockXBlockFields.dataHtml;
+    const sidebar = screen.getByTestId('library-sidebar');
+
+    const { getByText } = within(sidebar);
+
+    // should display the component with passed param: usageKey in the sidebar
+    expect(getByText(displayName)).toBeInTheDocument();
+    // clear usageKey filter
+    const clearFitlersButton = screen.getByRole('button', { name: /clear filters/i });
+    fireEvent.click(clearFitlersButton);
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenLastCalledWith(searchEndpoint, {
+        body: expect.not.stringContaining(mockXBlockFields.usageKeyHtml),
+        method: 'POST',
+        headers: expect.anything(),
+      });
+    });
+  });
+
+  it('filters by publish status', async () => {
+    await renderLibraryPage();
+
+    // Open the publish status filter dropdown
+    const filterButton = screen.getByRole('button', { name: /publish status/i });
+    fireEvent.click(filterButton);
+
+    // Test each publish status filter option
+    const publishedCheckbox = screen.getByRole('checkbox', { name: /^published \d+$/i });
+    const modifiedCheckbox = screen.getByRole('checkbox', { name: /^modified since publish \d+$/i });
+    const neverPublishedCheckbox = screen.getByRole('checkbox', { name: /^never published \d+$/i });
+
+    // Verify initial state - no clear filters button
+    expect(screen.queryByRole('button', { name: /clear filters/i })).not.toBeInTheDocument();
+
+    // Test Published filter
+    fireEvent.click(publishedCheckbox);
+
+    // Wait for both the API call and the UI update
+    await waitFor(() => {
+      // Check that the API was called with the correct filter
+      expect(fetchMock).toHaveBeenLastCalledWith(searchEndpoint, {
+        body: expect.stringContaining('"publish_status = published"'),
+        method: 'POST',
+        headers: expect.anything(),
+      });
+    });
+
+    // Wait for the clear filters button to appear
+    await waitFor(() => {
+      const clearFiltersButton = screen.getByText('Clear Filters');
+      expect(clearFiltersButton).toBeInTheDocument();
+    });
+
+    // Test Modified filter
+    fireEvent.click(modifiedCheckbox);
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenLastCalledWith(searchEndpoint, {
+        body: expect.stringContaining('"publish_status = modified"'),
+        method: 'POST',
+        headers: expect.anything(),
+      });
+    });
+
+    // Test Never Published filter
+    fireEvent.click(neverPublishedCheckbox);
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenLastCalledWith(searchEndpoint, {
+        body: expect.stringContaining('"publish_status = never"'),
+        method: 'POST',
+        headers: expect.anything(),
+      });
+    });
+
+    // Test clearing filters
+    const clearFiltersButton = screen.getByText('Clear Filters');
+    fireEvent.click(clearFiltersButton);
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenLastCalledWith(searchEndpoint, {
+        body: expect.stringContaining('"filter":[[],'), // Empty filter array
+        method: 'POST',
+        headers: expect.anything(),
+      });
+    });
+  });
+
+  it('Disables Type filter on Collections tab', async () => {
     await renderLibraryPage();
 
     expect(await screen.findByText('Content library')).toBeInTheDocument();
     expect((await screen.findAllByText(libraryTitle))[0]).toBeInTheDocument();
+    expect((await screen.findAllByText('Introduction to Testing'))[0]).toBeInTheDocument();
+    expect((await screen.findAllByText('Collection 1'))[0]).toBeInTheDocument();
 
-    // "Recently Modified" header + sort shown
-    expect(screen.getAllByText('Recently Modified').length).toEqual(2);
-    const recentModifiedContainer = (await screen.findAllByText('Recently Modified'))[1].parentElement?.parentElement?.parentElement;
-    expect(recentModifiedContainer).toBeTruthy();
+    // Filter by Text block type
+    fireEvent.click(screen.getByRole('button', { name: /type/i }));
+    fireEvent.click(screen.getByRole('checkbox', { name: /text/i }));
+    // Escape to close the Types filter drop-down and re-enable the tabs
+    fireEvent.keyDown(screen.getByRole('button', { name: /type/i }), { key: 'Escape' });
 
-    const container = within(recentModifiedContainer!);
-    expect(container.queryAllByText('Text').length).toBeGreaterThan(0);
-    expect(container.queryAllByText('Collection').length).toBeGreaterThan(0);
+    // Navigate to the collections tab
+    fireEvent.click(await screen.findByRole('tab', { name: 'Collections' }));
+    expect((await screen.findAllByText('Collection 1'))[0]).toBeInTheDocument();
+    // No Types filter shown
+    expect(screen.queryByRole('button', { name: /type/i })).not.toBeInTheDocument();
+
+    // Navigate to the components tab
+    fireEvent.click(screen.getByRole('tab', { name: 'Components' }));
+    // Text components should be shown
+    expect((await screen.findAllByText('Introduction to Testing'))[0]).toBeInTheDocument();
+    // Types filter is shown
+    expect(screen.getByRole('button', { name: /type/i })).toBeInTheDocument();
+  });
+
+  it('Shows an error if libraries V2 is disabled', async () => {
+    const { axiosMock } = initializeMocks();
+    axiosMock.onGet(getStudioHomeApiUrl()).reply(200, {
+      ...studioHomeMock,
+      libraries_v2_enabled: false,
+    });
+
+    render(<LibraryLayout />, { path, params: { libraryId: mockContentLibrary.libraryId } });
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'This page cannot be shown: Libraries v2 are disabled.',
+    );
   });
 });

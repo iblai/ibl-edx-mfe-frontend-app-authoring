@@ -16,6 +16,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { render, type RenderResult } from '@testing-library/react';
 import MockAdapter from 'axios-mock-adapter';
 import {
+  generatePath,
   MemoryRouter,
   MemoryRouterProps,
   Route,
@@ -24,10 +25,11 @@ import {
 
 import { ToastContext, type ToastContextData } from './generic/toast-context';
 import initializeReduxStore from './store';
+import { getApiWaffleFlagsUrl } from './data/api';
 
 /** @deprecated Use React Query and/or regular React Context instead of redux */
 let reduxStore: Store;
-let queryClient;
+let queryClient: QueryClient;
 let axiosMock: MockAdapter;
 
 /** To use this: `const { mockShowToast } = initializeMocks()` and `expect(mockShowToast).toHaveBeenCalled()` */
@@ -93,10 +95,7 @@ const RouterAndRoute: React.FC<RouteOptions> = ({
     const newRouterProps = { ...routerProps };
     if (!routerProps.initialEntries) {
       // Substitute the params into the URL so '/library/:libraryId' becomes '/library/lib:org:123'
-      let pathWithParams = path;
-      for (const [key, value] of Object.entries(params)) {
-        pathWithParams = pathWithParams.replaceAll(`:${key}`, value);
-      }
+      let pathWithParams = generatePath(path, params);
       if (pathWithParams.endsWith('/*')) {
         // Some routes (that contain child routes) need to end with /* in the <Route> but not in the router
         pathWithParams = pathWithParams.substring(0, pathWithParams.length - 1);
@@ -171,6 +170,10 @@ export function initializeMocks({ user = defaultUser, initialState = undefined }
     },
   });
   axiosMock = new MockAdapter(getAuthenticatedHttpClient());
+
+  axiosMock
+    .onGet(getApiWaffleFlagsUrl())
+    .reply(200, {});
 
   // Reset `mockToastContext` for this current test
   mockToastContext = {

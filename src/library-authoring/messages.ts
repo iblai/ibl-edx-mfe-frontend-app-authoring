@@ -33,7 +33,7 @@ const messages = defineMessages({
   },
   homeTab: {
     id: 'course-authoring.library-authoring.home-tab',
-    defaultMessage: 'Home',
+    defaultMessage: 'All Content',
     description: 'Tab label for the home tab',
   },
   componentsTab: {
@@ -105,6 +105,16 @@ const messages = defineMessages({
     id: 'course-authoring.library-authoring.badge.read-only',
     defaultMessage: 'Read Only',
     description: 'Text in badge when the user has read only access',
+  },
+  returnToLibrarySelection: {
+    id: 'course-authoring.library-authoring.pick-components.return-to-library-selection',
+    defaultMessage: 'Change Library',
+    description: 'Breadcrumbs link to return to library selection',
+  },
+  librariesV2DisabledError: {
+    id: 'authoring.alert.error.libraries.v2.disabled',
+    defaultMessage: 'This page cannot be shown: Libraries v2 are disabled.',
+    description: 'Error message shown to users when trying to load a libraries V2 page while libraries v2 are disabled.',
   },
 });
 

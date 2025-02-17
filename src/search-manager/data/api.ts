@@ -1,7 +1,7 @@
 import { camelCaseObject, getConfig } from '@edx/frontend-platform';
 import { getAuthenticatedHttpClient } from '@edx/frontend-platform/auth';
 import type {
-  Filter, MeiliSearch, MultiSearchQuery, SearchParams,
+  Filter, MeiliSearch, MultiSearchQuery,
 } from 'meilisearch';
 
 export const getContentSearchConfigUrl = () => new URL(
@@ -23,6 +23,12 @@ export enum SearchSortOption {
   OLDEST = 'created:asc',
   RECENTLY_PUBLISHED = 'last_published:desc',
   RECENTLY_MODIFIED = 'modified:desc',
+}
+
+export enum PublishStatus {
+  Published = 'published',
+  Modified = 'modified',
+  NeverPublished = 'never',
 }
 
 /**
@@ -126,9 +132,25 @@ export interface ContentHit extends BaseContentHit {
    * - First one is the name of the course/library itself.
    * - After that is the name and usage key of any parent Section/Subsection/Unit/etc.
    */
+  type: 'course_block' | 'library_block';
   breadcrumbs: [{ displayName: string }, ...Array<{ displayName: string, usageKey: string }>];
+  description?: string;
   content?: ContentDetails;
   lastPublished: number | null;
+  collections: { displayName?: string[], key?: string[] };
+  published?: ContentPublishedData;
+  publishStatus: PublishStatus;
+  formatted: BaseContentHit['formatted'] & { published?: ContentPublishedData, };
+}
+
+/**
+ * Information about the published data of single Xblock returned in search results
+ * Defined in edx-platform/openedx/core/djangoapps/content/search/documents.py
+ */
+export interface ContentPublishedData {
+  description?: string,
+  displayName?: string,
+  numChildren?: number,
 }
 
 /**
@@ -136,8 +158,10 @@ export interface ContentHit extends BaseContentHit {
  * Defined in edx-platform/openedx/core/djangoapps/content/search/documents.py
  */
 export interface CollectionHit extends BaseContentHit {
+  type: 'collection';
   description: string;
   numChildren?: number;
+  published?: ContentPublishedData;
 }
 
 /**
@@ -151,27 +175,9 @@ export function formatSearchHit(hit: Record<string, any>): ContentHit | Collecti
     displayName: _formatted?.display_name,
     content: _formatted?.content ?? {},
     description: _formatted?.description,
+    published: _formatted?.published,
   };
   return camelCaseObject(newHit);
-}
-
-export interface OverrideQueries {
-  components?: SearchParams,
-  collections?: SearchParams,
-}
-
-function applyOverrideQueries(
-  queries: MultiSearchQuery[],
-  overrideQueries?: OverrideQueries,
-): MultiSearchQuery[] {
-  const newQueries = [...queries];
-  if (overrideQueries?.components) {
-    newQueries[0] = { ...overrideQueries.components, indexUid: queries[0].indexUid };
-  }
-  if (overrideQueries?.collections) {
-    newQueries[2] = { ...overrideQueries.collections, indexUid: queries[2].indexUid };
-  }
-  return newQueries;
 }
 
 interface FetchSearchParams {
@@ -180,13 +186,14 @@ interface FetchSearchParams {
   searchKeywords: string,
   blockTypesFilter?: string[],
   problemTypesFilter?: string[],
+  publishStatusFilter?: PublishStatus[],
   /** The full path of tags that each result MUST have, e.g. ["Difficulty > Hard", "Subject > Math"] */
   tagsFilter?: string[],
   extraFilter?: Filter,
   sort?: SearchSortOption[],
   /** How many results to skip, e.g. if limit=20 then passing offset=20 gets the second page. */
   offset?: number,
-  overrideQueries?: OverrideQueries,
+  skipBlockTypeFetch?: boolean,
 }
 
 export async function fetchSearchResults({
@@ -195,21 +202,21 @@ export async function fetchSearchResults({
   searchKeywords,
   blockTypesFilter,
   problemTypesFilter,
+  publishStatusFilter,
   tagsFilter,
   extraFilter,
   sort,
-  overrideQueries,
   offset = 0,
+  skipBlockTypeFetch = false,
 }: FetchSearchParams): Promise<{
-    hits: ContentHit[],
+    hits: (ContentHit | CollectionHit)[],
     nextOffset: number | undefined,
     totalHits: number,
     blockTypes: Record<string, number>,
     problemTypes: Record<string, number>,
-    collectionHits: CollectionHit[],
-    totalCollectionHits: number,
+    publishStatus: Record<string, number>,
   }> {
-  let queries: MultiSearchQuery[] = [];
+  const queries: MultiSearchQuery[] = [];
 
   // Convert 'extraFilter' into an array
   const extraFilterFormatted = forceArray(extraFilter);
@@ -217,6 +224,8 @@ export async function fetchSearchResults({
   const blockTypesFilterFormatted = blockTypesFilter?.length ? [blockTypesFilter.map(bt => `block_type = ${bt}`)] : [];
 
   const problemTypesFilterFormatted = problemTypesFilter?.length ? [problemTypesFilter.map(pt => `content.problem_types = ${pt}`)] : [];
+
+  const publishStatusFilterFormatted = publishStatusFilter?.length ? [publishStatusFilter.map(ps => `publish_status = ${ps}`)] : [];
 
   const tagsFilterFormatted = formatTagsFilter(tagsFilter);
 
@@ -228,8 +237,6 @@ export async function fetchSearchResults({
     ...problemTypesFilterFormatted,
   ].flat()];
 
-  const collectionsFilter = 'type = "collection"';
-
   // First query is always to get the hits, with all the filters applied.
   queries.push({
     indexUid: indexName,
@@ -237,67 +244,43 @@ export async function fetchSearchResults({
     filter: [
       // top-level entries in the array are AND conditions and must all match
       // Inner arrays are OR conditions, where only one needs to match.
-      `NOT ${collectionsFilter}`, // exclude collections
       ...typeFilters,
       ...extraFilterFormatted,
       ...tagsFilterFormatted,
+      ...publishStatusFilterFormatted,
     ],
-    attributesToHighlight: ['display_name', 'content'],
+    attributesToHighlight: ['display_name', 'description', 'published'],
     highlightPreTag: HIGHLIGHT_PRE_TAG,
     highlightPostTag: HIGHLIGHT_POST_TAG,
-    attributesToCrop: ['content'],
+    attributesToCrop: ['description', 'published'],
     sort,
     offset,
     limit,
   });
 
   // The second query is to get the possible values for the "block types" filter
-  queries.push({
-    indexUid: indexName,
-    q: searchKeywords,
-    facets: ['block_type', 'content.problem_types'],
-    filter: [
-      ...extraFilterFormatted,
-      // We exclude the block type filter here so we get all the other available options for it.
-      ...tagsFilterFormatted,
-    ],
-    limit: 0, // We don't need any "hits" for this - just the facetDistribution
-  });
-
-  // Third query is to get the hits for collections, with all the filters applied.
-  queries.push({
-    indexUid: indexName,
-    q: searchKeywords,
-    filter: [
-      // top-level entries in the array are AND conditions and must all match
-      // Inner arrays are OR conditions, where only one needs to match.
-      collectionsFilter, // include only collections
-      ...extraFilterFormatted,
-      // We exclude the block type filter as collections are only of 1 type i.e. collection.
-      ...tagsFilterFormatted,
-    ],
-    attributesToHighlight: ['display_name', 'description'],
-    highlightPreTag: HIGHLIGHT_PRE_TAG,
-    highlightPostTag: HIGHLIGHT_POST_TAG,
-    attributesToCrop: ['description'],
-    sort,
-    offset,
-    limit,
-  });
-
-  queries = applyOverrideQueries(queries, overrideQueries);
+  if (!skipBlockTypeFetch) {
+    queries.push({
+      indexUid: indexName,
+      facets: ['block_type', 'content.problem_types', 'publish_status'],
+      filter: [
+        ...extraFilterFormatted,
+        // We exclude the block type filter here so we get all the other available options for it.
+        ...tagsFilterFormatted,
+      ],
+      limit: 0, // We don't need any "hits" for this - just the facetDistribution
+    });
+  }
 
   const { results } = await client.multiSearch(({ queries }));
-  const componentHitLength = results[0].hits.length;
-  const collectionHitLength = results[2].hits.length;
+  const hitLength = results[0].hits.length;
   return {
     hits: results[0].hits.map(formatSearchHit) as ContentHit[],
-    totalHits: results[0].totalHits ?? results[0].estimatedTotalHits ?? componentHitLength,
-    blockTypes: results[1].facetDistribution?.block_type ?? {},
-    problemTypes: results[1].facetDistribution?.['content.problem_types'] ?? {},
-    nextOffset: componentHitLength === limit || collectionHitLength === limit ? offset + limit : undefined,
-    collectionHits: results[2].hits.map(formatSearchHit) as CollectionHit[],
-    totalCollectionHits: results[2].totalHits ?? results[2].estimatedTotalHits ?? collectionHitLength,
+    totalHits: results[0].totalHits ?? results[0].estimatedTotalHits ?? hitLength,
+    blockTypes: results[1]?.facetDistribution?.block_type ?? {},
+    problemTypes: results[1]?.facetDistribution?.['content.problem_types'] ?? {},
+    publishStatus: results[1]?.facetDistribution?.publish_status ?? {},
+    nextOffset: hitLength === limit ? offset + limit : undefined,
   };
 }
 
@@ -504,9 +487,9 @@ export async function fetchTagsThatMatchKeyword({
     attributesToSearchOn: ['tags.taxonomy', 'tags.level0', 'tags.level1', 'tags.level2', 'tags.level3'],
     attributesToRetrieve: ['tags'],
     limit,
-    // We'd like to use 'showMatchesPosition: true' to know exactly which tags match, but it doesn't provide the
-    // detail we need; it's impossible to tell which tag at a given level matched based on the returned _matchesPosition
-    // data - https://github.com/orgs/meilisearch/discussions/550
+    // TODO: improve this - use 'showMatchesPosition: true' to know exactly which tags match. Previously it didn't
+    // provide the detail we need (https://github.com/orgs/meilisearch/discussions/550) but it has now been implemented
+    // in newer versions of Meilisearch. See https://github.com/meilisearch/meilisearch/pull/5005 which fixes it.
   });
 
   const tagSearchKeywordsLower = tagSearchKeywords.toLocaleLowerCase();
@@ -534,20 +517,4 @@ export async function fetchTagsThatMatchKeyword({
   });
 
   return { matches: Array.from(matches).map((tagPath) => ({ tagPath })), mayBeMissingResults: hits.length === limit };
-}
-
-/**
- * Fetch single document by its id
- */
-/* istanbul ignore next */
-export async function fetchDocumentById({ client, indexName, id } : {
-  /** The Meilisearch client instance */
-  client: MeiliSearch;
-  /** Which index to search */
-  indexName: string;
-  /** document id */
-  id: string | number;
-}): Promise<ContentHit | CollectionHit> {
-  const doc = await client.index(indexName).getDocument(id);
-  return formatSearchHit(doc);
 }
