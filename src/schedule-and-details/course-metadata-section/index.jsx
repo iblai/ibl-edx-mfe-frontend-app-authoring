@@ -10,22 +10,35 @@ function renderField(courseSettings, editedValues, param, onChange) {
 
   if (param.type === "SelectField") {
     const options = courseSettings.formChoices?.[param.config.optionsKey] || [];
-    console.log('Select field options:', options);
+    console.log('Select field config:', {
+      optionsKey: param.config.optionsKey,
+      formKey: param.config.formKey,
+      options,
+      currentValue: editedValues[param.config.formKey],
+      defaultValue: param.config.defaultValue
+    });
+
     return (
       <Dropdown className="bg-white">
         <Dropdown.Toggle variant="outline-primary" id={param.fieldId}>
           {editedValues[param.config.formKey] || param.config.defaultValue || '---'}
         </Dropdown.Toggle>
         <Dropdown.Menu>
-          {options.map((option) => (
-            <Dropdown.Item
-              key={option.value}
-              onClick={() => onChange(option.value, param.config.formKey)}
-              active={editedValues[param.config.formKey] === option.value}
-            >
-              {option.label}
-            </Dropdown.Item>
-          ))}
+          {options.map((option) => {
+            console.log('Rendering option:', option);
+            return (
+              <Dropdown.Item
+                key={option.value}
+                onClick={() => {
+                  console.log('Selected option:', option);
+                  onChange(option.value, param.config.formKey);
+                }}
+                active={editedValues[param.config.formKey] === option.value}
+              >
+                {option.label}
+              </Dropdown.Item>
+            );
+          })}
         </Dropdown.Menu>
       </Dropdown>
     );

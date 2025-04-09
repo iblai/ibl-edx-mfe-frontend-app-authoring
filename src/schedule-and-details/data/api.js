@@ -47,10 +47,25 @@ export async function updateCourseDetails(courseId, details) {
   // Extract metadata fields from the details
   const { formChoices, ...formData } = details;
 
+  // Ensure required date fields are set
+  const defaultDate = new Date();
+  defaultDate.setHours(0, 0, 0, 0);
+
+  const requiredDateFields = {
+    start_date: formData.startDate || defaultDate.toISOString(),
+    end_date: formData.endDate || null,
+    enrollment_start: formData.enrollmentStart || defaultDate.toISOString(),
+    enrollment_end: formData.enrollmentEnd || null
+  };
+
   const payload = {
-    form_data: convertObjectToSnakeCase(formData, true),
+    form_data: {
+      ...convertObjectToSnakeCase(formData, true),
+      ...requiredDateFields
+    },
     form_choices: formChoices || {}
   };
+
   console.log("Updating course details at:", url);
   console.log("Update payload:", payload);
 
