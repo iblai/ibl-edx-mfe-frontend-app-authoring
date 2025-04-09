@@ -80,20 +80,17 @@ export const CourseMetadataSection = ({
 
   return (
     <section className="section-container course-metadata-section">
-      {aboutPageEditable && (
-        <SectionSubHeader
-          title="Course Metadata"
-          description="Add additional metadata about your course"
-        />
-      )}
-      {aboutPageEditable &&
-        (mfeConfig.STUDIO_COURSE_METADATA_FIELDS || []).map((param) => (
-          <Form.Group className="form-group-custom" key={param.config.label}>
-            <Form.Label>{param.config.label}</Form.Label>
-            {renderField(courseSettings, editedValues, param, onChange)}
-            <Form.Control.Feedback>{param.config.tip}</Form.Control.Feedback>
-          </Form.Group>
-        ))}
+      <SectionSubHeader
+        title="Course Metadata"
+        description="Add additional metadata about your course"
+      />
+      {(mfeConfig.STUDIO_COURSE_METADATA_FIELDS || []).map((param) => (
+        <Form.Group className="form-group-custom" key={param.config.label}>
+          <Form.Label>{param.config.label}</Form.Label>
+          {renderField(courseSettings, editedValues, param, onChange)}
+          <Form.Control.Feedback>{param.config.tip}</Form.Control.Feedback>
+        </Form.Group>
+      ))}
     </section>
   );
 };
@@ -102,8 +99,8 @@ CourseMetadataSection.propTypes = {
   onChange: PropTypes.func.isRequired,
   mfeConfig: PropTypes.object.isRequired,
   courseSettings: PropTypes.object.isRequired,
-  aboutPageEditable: PropTypes.bool.isRequired,
   editedValues: PropTypes.object.isRequired,
+  aboutPageEditable: PropTypes.bool,
 };
 
 export default CourseMetadataSection;
