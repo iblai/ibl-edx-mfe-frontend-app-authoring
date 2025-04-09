@@ -49,7 +49,8 @@ export async function updateCourseDetails(courseId, details) {
 
   // Create the payload with form_data content at root level
   const payload = {
-    ...formData,
+    ...formData.formData, // Extract the inner formData
+    course_key: courseId,
     form_choices: formChoices
   };
 
@@ -67,9 +68,11 @@ export async function updateCourseDetails(courseId, details) {
     console.log("=== Course Update Response ===");
     console.log("Response:", JSON.stringify(response.data, null, 2));
     console.log("=============================");
+
+    // Return in the same format as GET response
     return {
-      formData: response.data.form_data || response.data,
-      formChoices: response.data.form_choices || {}
+      formData: response.data,
+      formChoices: formChoices
     };
   } catch (error) {
     console.error("=== Course Update Error ===");
