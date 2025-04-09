@@ -5,33 +5,54 @@ import SectionSubHeader from "../../generic/section-sub-header";
 
 function renderField(courseSettings, editedValues, param, onChange) {
   if (param.type === "SelectField") {
+    const options = courseSettings.formChoices?.[param.config.optionsKey] || [];
     return (
       <Dropdown className="bg-white">
         <Dropdown.Toggle variant="outline-primary" id={param.fieldId}>
-          {editedValues[param.config.optionsKey]}
+          {editedValues[param.config.formKey] || param.config.defaultValue || '---'}
         </Dropdown.Toggle>
         <Dropdown.Menu>
-          {courseSettings["formChoices"][param.config.optionsKey]?.map(
-            (option) => (
-              <Dropdown.Item
-                key={option.value}
-                onClick={() => onChange(option.value, param.config.formKey)}
-                active={editedValues[param.config.optionsKey] === option.value}
-              >
-                {option.label}
-              </Dropdown.Item>
-            )
-          )}
+          {options.map((option) => (
+            <Dropdown.Item
+              key={option.value}
+              onClick={() => onChange(option.value, param.config.formKey)}
+              active={editedValues[param.config.formKey] === option.value}
+            >
+              {option.label}
+            </Dropdown.Item>
+          ))}
         </Dropdown.Menu>
       </Dropdown>
     );
   }
+
+  if (param.type === "TagField") {
+    // Convert string of tags to array if needed
+    const currentValue = editedValues[param.config.formKey] || '';
+    const tags = typeof currentValue === 'string' ? currentValue.split(',').filter(Boolean) : currentValue;
+
+    return (
+      <div>
+        <Form.Control
+          value={tags.join(', ')}
+          placeholder={param.config.placeholder}
+          onChange={(e) => {
+            const newTags = e.target.value.split(',').map(tag => tag.trim()).filter(Boolean);
+            onChange(newTags, param.config.formKey);
+          }}
+          aria-label={param.config.label}
+          title={param.config.titleTip}
+        />
+      </div>
+    );
+  }
+
   return (
     <Form.Control
       as={param.config.asTextarea ? TextareaAutosize : "input"}
-      value={editedValues[param.config.formKey]}
+      value={editedValues[param.config.formKey] || ''}
       name={param.config.formKey}
-      maxLength={param.maxLength}
+      placeholder={param.config.placeholder}
       onChange={(e) => onChange(e.target.value, param.config.formKey)}
       aria-label={param.config.label}
     />
@@ -70,4 +91,7 @@ CourseMetadataSection.propTypes = {
   mfeConfig: PropTypes.object.isRequired,
   courseSettings: PropTypes.object.isRequired,
   aboutPageEditable: PropTypes.bool.isRequired,
+  editedValues: PropTypes.object.isRequired,
 };
+
+export default CourseMetadataSection;

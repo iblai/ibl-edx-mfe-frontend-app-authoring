@@ -6,16 +6,14 @@ const getApiBaseUrl = () => getConfig().STUDIO_BASE_URL;
 // export const getCourseDetailsApiUrl = (courseId) =>
 //   `${getApiBaseUrl()}/api/contentstore/v1/course_details/${courseId}`;
 export const getCourseDetailsApiUrl = (courseId) =>
-  `${getApiBaseUrl()}/api/ibl/v1/course_settings?course_key=${courseId}`;
+  `${getApiBaseUrl()}/api/catalog/metadata/course/settings?course_key=${courseId}`;
 export const getCourseSettingsApiUrl = (courseId) =>
-  `${getApiBaseUrl()}/api/contentstore/v1/course_settings/${courseId}`;
+  `${getApiBaseUrl()}/api/catalog/metadata/course/settings?course_key=${courseId}`;
 export const getUploadAssetsUrl = (courseId) =>
   `${getApiBaseUrl()}/assets/${courseId}/`;
 const getMfeConfigUrl = `${getConfig().LMS_BASE_URL}/api/mfe_config/v1`;
 export const getCourseDetailsEncodedApiUrl = (courseId) =>
-  `${getApiBaseUrl()}/api/ibl/v1/course_settings?course_key=${encodeURIComponent(
-    courseId
-  )}`;
+  `${getApiBaseUrl()}/api/catalog/metadata/course/settings?course_key=${encodeURIComponent(courseId)}`;
 
 /**
  * Get course details.
@@ -28,7 +26,11 @@ export async function getCourseDetails(courseId) {
   try {
     const response = await getAuthenticatedHttpClient().get(url);
     const { data } = response;
-    return camelCaseObject(data);
+    // Return both formData and formChoices for metadata fields
+    return {
+      ...camelCaseObject(data.formData || data),
+      formChoices: data.formChoices || {}
+    };
   } catch (error) {
     console.log("Error response:", error.response);
     throw error;
@@ -43,7 +45,13 @@ export async function getCourseDetails(courseId) {
  */
 export async function updateCourseDetails(courseId, details) {
   const url = getCourseDetailsApiUrl(courseId);
-  const payload = convertObjectToSnakeCase(details, true);
+  // Extract metadata fields from the details
+  const { formChoices, ...formData } = details;
+
+  const payload = {
+    form_data: convertObjectToSnakeCase(formData, true),
+    form_choices: formChoices || {}
+  };
   console.log("Updating course details at:", url);
   console.log("Update payload:", payload);
 
@@ -52,7 +60,10 @@ export async function updateCourseDetails(courseId, details) {
     console.log("Update response:", response);
     const { data } = response;
     console.log("Updated data:", data);
-    return camelCaseObject(data);
+    return {
+      ...camelCaseObject(data.formData || data),
+      formChoices: data.formChoices || {}
+    };
   } catch (error) {
     console.error("Error updating course details:", error);
     console.log("Error response:", error.response);
@@ -66,10 +77,18 @@ export async function updateCourseDetails(courseId, details) {
  * @returns {Promise<Object>}
  */
 export async function getCourseSettings(courseId) {
-  const { data } = await getAuthenticatedHttpClient().get(
-    `${getCourseSettingsApiUrl(courseId)}`
-  );
-  return camelCaseObject(data);
+  const url = getCourseSettingsApiUrl(courseId);
+  try {
+    const { data } = await getAuthenticatedHttpClient().get(url);
+    // Return both formData and formChoices for metadata fields
+    return {
+      ...camelCaseObject(data.formData || data),
+      formChoices: data.formChoices || {}
+    };
+  } catch (error) {
+    console.log("Error response:", error.response);
+    throw error;
+  }
 }
 
 /**
