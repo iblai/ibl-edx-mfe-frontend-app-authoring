@@ -72,12 +72,10 @@ const IntroducingSection = ({
 
   return (
     <section className="section-container introducing-section">
-      {aboutPageEditable && (
-        <SectionSubHeader
-          title={intl.formatMessage(messages.introducingTitle)}
-          description={intl.formatMessage(messages.introducingDescription)}
-        />
-      )}
+      <SectionSubHeader
+        title={intl.formatMessage(messages.introducingTitle)}
+        description={intl.formatMessage(messages.introducingDescription)}
+      />
       {enableExtendedCourseDetails && (
         <ExtendedCourseDetails
           title={title}
@@ -107,37 +105,33 @@ const IntroducingSection = ({
           </Form.Control.Feedback>
         </Form.Group>
       )}
-      {aboutPageEditable && (
-        <>
-          <Form.Group className="form-group-custom">
-            <Form.Label>{intl.formatMessage(messages.courseOverviewLabel)}</Form.Label>
-            <WysiwygEditor
-              initialValue={overview}
-              onChange={(value) => onChange(value, 'overview')}
-            />
-            <Form.Control.Feedback>{overviewHelpText}</Form.Control.Feedback>
-          </Form.Group>
-          {sidebarHtmlEnabled && (
-            <Form.Group className="form-group-custom">
-              <Form.Label>{intl.formatMessage(messages.courseAboutSidebarLabel)}</Form.Label>
-              <WysiwygEditor
-                initialValue={aboutSidebarHtml}
-                onChange={(value) => onChange(value, 'aboutSidebarHtml')}
-              />
-              <Form.Control.Feedback>{aboutSidebarHelpText}</Form.Control.Feedback>
-            </Form.Group>
-          )}
-          <CourseUploadImage
-            label={intl.formatMessage(messages.courseCardImageLabel)}
-            identifierFieldText={intl.formatMessage(messages.courseCardImageIdentifierText)}
-            assetImagePath={courseImageAssetPath}
-            assetImageField="courseImageAssetPath"
-            imageNameField="courseImageName"
-            showImageBodyText
-            onChange={onChange}
+      <Form.Group className="form-group-custom">
+        <Form.Label>{intl.formatMessage(messages.courseOverviewLabel)}</Form.Label>
+        <WysiwygEditor
+          initialValue={overview}
+          onChange={(value) => onChange(value, 'overview')}
+        />
+        <Form.Control.Feedback>{overviewHelpText}</Form.Control.Feedback>
+      </Form.Group>
+      {sidebarHtmlEnabled && (
+        <Form.Group className="form-group-custom">
+          <Form.Label>{intl.formatMessage(messages.courseAboutSidebarLabel)}</Form.Label>
+          <WysiwygEditor
+            initialValue={aboutSidebarHtml}
+            onChange={(value) => onChange(value, 'aboutSidebarHtml')}
           />
-        </>
+          <Form.Control.Feedback>{aboutSidebarHelpText}</Form.Control.Feedback>
+        </Form.Group>
       )}
+      <CourseUploadImage
+        label={intl.formatMessage(messages.courseCardImageLabel)}
+        identifierFieldText={intl.formatMessage(messages.courseCardImageIdentifierText)}
+        assetImagePath={courseImageAssetPath}
+        assetImageField="courseImageAssetPath"
+        imageNameField="courseImageName"
+        showImageBodyText
+        onChange={onChange}
+      />
       {enableExtendedCourseDetails && (
         <>
           <CourseUploadImage
@@ -160,9 +154,7 @@ const IntroducingSection = ({
           />
         </>
       )}
-      {aboutPageEditable && (
-        <IntroductionVideo introVideo={introVideo} onChange={onChange} />
-      )}
+      <IntroductionVideo introVideo={introVideo} onChange={onChange} />
     </section>
   );
 };
@@ -179,6 +171,8 @@ IntroducingSection.defaultProps = {
   bannerImageAssetPath: '',
   videoThumbnailImageAssetPath: '',
   overview: '',
+  aboutPageEditable: true,
+  sidebarHtmlEnabled: false,
 };
 
 IntroducingSection.propTypes = {
@@ -191,8 +185,8 @@ IntroducingSection.propTypes = {
   introVideo: PropTypes.string,
   aboutSidebarHtml: PropTypes.string,
   shortDescription: PropTypes.string,
-  aboutPageEditable: PropTypes.bool.isRequired,
-  sidebarHtmlEnabled: PropTypes.bool.isRequired,
+  aboutPageEditable: PropTypes.bool,
+  sidebarHtmlEnabled: PropTypes.bool,
   lmsLinkForAboutPage: PropTypes.string.isRequired,
   courseImageAssetPath: PropTypes.string,
   bannerImageAssetPath: PropTypes.string,
