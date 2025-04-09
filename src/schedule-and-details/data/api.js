@@ -25,10 +25,10 @@ export async function getCourseDetails(courseId) {
     const response = await getAuthenticatedHttpClient().get(url);
     console.log('Course details response:', response);
     const { data } = response;
-    // Return both formData and formChoices for metadata fields
+    // Return formData and formChoices in camelCase format
     return {
-      ...camelCaseObject(data.formData || data),
-      formChoices: data.formChoices || {}
+      formData: data.form_data || data,
+      formChoices: data.form_choices || {}
     };
   } catch (error) {
     console.log("Error response:", error.response);
@@ -44,43 +44,38 @@ export async function getCourseDetails(courseId) {
  */
 export async function updateCourseDetails(courseId, details) {
   const url = getCourseDetailsApiUrl(courseId);
-  // Extract metadata fields from the details
-  const { formChoices, ...formData } = details;
+  // Extract form_data and form_choices from details
+  const { formData, formChoices } = details;
 
-  // Ensure required date fields are set
-  const defaultDate = new Date();
-  defaultDate.setHours(0, 0, 0, 0);
-
-  const requiredDateFields = {
-    start_date: formData.startDate || defaultDate.toISOString(),
-    end_date: formData.endDate || null,
-    enrollment_start: formData.enrollmentStart || defaultDate.toISOString(),
-    enrollment_end: formData.enrollmentEnd || null
-  };
-
+  // Create the payload with form_data content at root level
   const payload = {
-    form_data: {
-      ...convertObjectToSnakeCase(formData, true),
-      ...requiredDateFields
-    },
-    form_choices: formChoices || {}
+    ...formData,
+    form_choices: formChoices
   };
 
-  console.log("Updating course details at:", url);
-  console.log("Update payload:", payload);
+  console.log("=== Course Update Request Details (POST) ===");
+  console.log("URL:", url);
+  console.log("Course ID:", courseId);
+  console.log("Input details:", JSON.stringify(details, null, 2));
+  console.log("Form Data:", JSON.stringify(formData, null, 2));
+  console.log("Form Choices:", JSON.stringify(formChoices, null, 2));
+  console.log("Final Payload:", JSON.stringify(payload, null, 2));
+  console.log("===================================");
 
   try {
     const response = await getAuthenticatedHttpClient().post(url, payload);
-    console.log("Update response:", response);
-    const { data } = response;
-    console.log("Updated data:", data);
+    console.log("=== Course Update Response ===");
+    console.log("Response:", JSON.stringify(response.data, null, 2));
+    console.log("=============================");
     return {
-      ...camelCaseObject(data.formData || data),
-      formChoices: data.formChoices || {}
+      formData: response.data.form_data || response.data,
+      formChoices: response.data.form_choices || {}
     };
   } catch (error) {
-    console.error("Error updating course details:", error);
-    console.log("Error response:", error.response);
+    console.error("=== Course Update Error ===");
+    console.error("Error:", error);
+    console.error("Error Response:", error.response?.data);
+    console.error("=========================");
     throw error;
   }
 }
