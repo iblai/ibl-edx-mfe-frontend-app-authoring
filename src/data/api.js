@@ -47,13 +47,19 @@ export async function getWaffleFlags(courseId) {
     const { data } = response;
     return normalizeCourseDetail(data);
   } catch (error) {
-    console.error('Error getting waffle flags:', error);
+    console.log('Waffle flags error:', error);
     console.log('Error response:', error.response);
-    // Instead of failing completely, return a default empty state
-    return {
-      id: courseId,
-      courseId,
-      waffleFlags: {},
-    };
+
+    // If it's a 404, return empty flags as this is a valid case
+    if (error.response?.status === 404) {
+      console.log('No waffle flags found (404), returning empty flags');
+      return {
+        id: courseId,
+        courseId,
+        waffleFlags: {},
+      };
+    }
+    // For other errors, throw them to be handled by the caller
+    throw error;
   }
 }
