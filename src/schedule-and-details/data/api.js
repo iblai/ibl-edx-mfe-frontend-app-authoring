@@ -6,14 +6,12 @@ const getApiBaseUrl = () => getConfig().STUDIO_BASE_URL;
 // export const getCourseDetailsApiUrl = (courseId) =>
 //   `${getApiBaseUrl()}/api/contentstore/v1/course_details/${courseId}`;
 export const getCourseDetailsApiUrl = (courseId) =>
-  `${getApiBaseUrl()}/api/catalog/metadata/course/settings?course_key=${courseId}`;
+  `${getApiBaseUrl()}/api/catalog/metadata/course/settings?course_key=${encodeURIComponent(courseId)}`;
 export const getCourseSettingsApiUrl = (courseId) =>
-  `${getApiBaseUrl()}/api/catalog/metadata/course/settings?course_key=${courseId}`;
+  `${getApiBaseUrl()}/api/catalog/metadata/course/settings?course_key=${encodeURIComponent(courseId)}`;
 export const getUploadAssetsUrl = (courseId) =>
   `${getApiBaseUrl()}/assets/${courseId}/`;
 const getMfeConfigUrl = `${getConfig().LMS_BASE_URL}/api/mfe_config/v1`;
-export const getCourseDetailsEncodedApiUrl = (courseId) =>
-  `${getApiBaseUrl()}/api/catalog/metadata/course/settings?course_key=${encodeURIComponent(courseId)}`;
 
 /**
  * Get course details.
@@ -21,7 +19,7 @@ export const getCourseDetailsEncodedApiUrl = (courseId) =>
  * @returns {Promise<Object>}
  */
 export async function getCourseDetails(courseId) {
-  const url = getCourseDetailsEncodedApiUrl(courseId);
+  const url = getCourseDetailsApiUrl(courseId);
 
   try {
     const response = await getAuthenticatedHttpClient().get(url);
