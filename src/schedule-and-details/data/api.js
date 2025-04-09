@@ -6,9 +6,9 @@ const getApiBaseUrl = () => getConfig().STUDIO_BASE_URL;
 // export const getCourseDetailsApiUrl = (courseId) =>
 //   `${getApiBaseUrl()}/api/contentstore/v1/course_details/${courseId}`;
 export const getCourseDetailsApiUrl = (courseId) =>
-  `${getApiBaseUrl()}/api/catalog/metadata/course/settings?course_key=${encodeURIComponent(courseId)}`;
+  `${getApiBaseUrl()}/api/ibl/catalog/metadata/course/settings?course_key=${encodeURIComponent(courseId)}`;
 export const getCourseSettingsApiUrl = (courseId) =>
-  `${getApiBaseUrl()}/api/catalog/metadata/course/settings?course_key=${encodeURIComponent(courseId)}`;
+  `${getApiBaseUrl()}/api/ibl/catalog/metadata/course/settings?course_key=${encodeURIComponent(courseId)}`;
 export const getUploadAssetsUrl = (courseId) =>
   `${getApiBaseUrl()}/assets/${courseId}/`;
 const getMfeConfigUrl = `${getConfig().LMS_BASE_URL}/api/mfe_config/v1`;
