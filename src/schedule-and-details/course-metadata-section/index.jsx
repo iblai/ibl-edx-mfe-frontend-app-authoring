@@ -4,8 +4,13 @@ import { Form, Dropdown } from "@openedx/paragon";
 import SectionSubHeader from "../../generic/section-sub-header";
 
 function renderField(courseSettings, editedValues, param, onChange) {
+  console.log('Rendering field:', param);
+  console.log('Course settings:', courseSettings);
+  console.log('Edited values:', editedValues);
+
   if (param.type === "SelectField") {
     const options = courseSettings.formChoices?.[param.config.optionsKey] || [];
+    console.log('Select field options:', options);
     return (
       <Dropdown className="bg-white">
         <Dropdown.Toggle variant="outline-primary" id={param.fieldId}>
@@ -66,6 +71,13 @@ export const CourseMetadataSection = ({
   editedValues,
   onChange,
 }) => {
+  console.log('CourseMetadataSection props:', {
+    aboutPageEditable,
+    mfeConfig,
+    courseSettings,
+    editedValues
+  });
+
   return (
     <section className="section-container course-metadata-section">
       {aboutPageEditable && (

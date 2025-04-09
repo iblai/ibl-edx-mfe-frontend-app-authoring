@@ -11,7 +11,7 @@ export const getCourseSettingsApiUrl = (courseId) =>
   `${getApiBaseUrl()}/api/ibl/catalog/metadata/course/settings?course_key=${encodeURIComponent(courseId)}`;
 export const getUploadAssetsUrl = (courseId) =>
   `${getApiBaseUrl()}/assets/${courseId}/`;
-const getMfeConfigUrl = `${getConfig().LMS_BASE_URL}/api/mfe_config/v1`;
+const getMfeConfigUrl = `${getConfig().LMS_BASE_URL}/api/mfe_config/v1?mfe=authoring`;
 
 /**
  * Get course details.
@@ -23,6 +23,7 @@ export async function getCourseDetails(courseId) {
 
   try {
     const response = await getAuthenticatedHttpClient().get(url);
+    console.log('Course details response:', response);
     const { data } = response;
     // Return both formData and formChoices for metadata fields
     return {
@@ -78,6 +79,7 @@ export async function getCourseSettings(courseId) {
   const url = getCourseSettingsApiUrl(courseId);
   try {
     const { data } = await getAuthenticatedHttpClient().get(url);
+    console.log('Course settings response:', data);
     // Return both formData and formChoices for metadata fields
     return {
       ...camelCaseObject(data.formData || data),
@@ -94,6 +96,13 @@ export async function getCourseSettings(courseId) {
  * @returns {Promise<Object>}
  */
 export async function getMfeConfig() {
-  const { data } = await getAuthenticatedHttpClient().get(`${getMfeConfigUrl}`);
-  return data;
+  try {
+    const response = await getAuthenticatedHttpClient().get(`${getMfeConfigUrl}`);
+    console.log('MFE config response:', response);
+    const { data } = response;
+    return data;
+  } catch (error) {
+    console.error('Error fetching MFE config:', error);
+    throw error;
+  }
 }
