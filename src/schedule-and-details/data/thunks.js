@@ -14,6 +14,8 @@ import {
   fetchCourseSettingsSuccess,
   updateLoadingMfeConfigStatus,
   fetchMfeConfigSuccess,
+  setMfeConfigLoadingStatus,
+  setMfeConfig,
 } from "./slice";
 
 export function fetchCourseDetailsQuery(courseId) {
@@ -83,33 +85,22 @@ export function fetchCourseSettingsQuery(courseId) {
   };
 }
 
-export function fetchMfeConfigQuery() {
-  return async (dispatch) => {
-    dispatch(
-      updateLoadingMfeConfigStatus({ status: RequestStatus.IN_PROGRESS })
-    );
-
-    try {
-      const mfeConfig = await getMfeConfig();
-      dispatch(fetchMfeConfigSuccess(mfeConfig));
-      dispatch(
-        updateLoadingMfeConfigStatus({ status: RequestStatus.SUCCESSFUL })
-      );
-      return true;
-    } catch (error) {
-      if (error.response && error.response.status === 403) {
-        dispatch(
-          updateLoadingMfeConfigStatus({
-            courseId,
-            status: RequestStatus.DENIED,
-          })
-        );
-      } else {
-        dispatch(
-          updateLoadingMfeConfigStatus({ status: RequestStatus.FAILED })
-        );
-      }
-      return false;
-    }
-  };
-}
+export const fetchMfeConfigQuery = () => async (dispatch) => {
+  try {
+    console.log('[fetchMfeConfigQuery] Starting MFE config fetch');
+    dispatch(setMfeConfigLoadingStatus(true));
+    const response = await getMfeConfig();
+    console.log('[fetchMfeConfigQuery] MFE config fetched successfully:', {
+      STUDIO_COURSE_METADATA_FIELDS: response.STUDIO_COURSE_METADATA_FIELDS?.map(field => ({
+        label: field.config.label,
+        formKey: field.config.formKey,
+      })),
+      flags: response.flags,
+    });
+    dispatch(setMfeConfig(response));
+    dispatch(setMfeConfigLoadingStatus(false));
+  } catch (error) {
+    console.error('[fetchMfeConfigQuery] Error fetching MFE config:', error);
+    dispatch(setMfeConfigLoadingStatus(false));
+  }
+};

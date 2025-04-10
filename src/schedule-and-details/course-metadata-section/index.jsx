@@ -58,7 +58,15 @@ function renderField(courseSettings, editedValues, param, onChange) {
       value={editedValues[param.config.formKey] || ''}
       name={param.config.formKey}
       placeholder={param.config.placeholder}
-      onChange={(e) => onChange(e.target.value, param.config.formKey)}
+      onChange={(e) => {
+        console.log(`[CourseMetadataSection] Field value changed:`, {
+          label: param.config.label,
+          formKey: param.config.formKey,
+          oldValue: editedValues[param.config.formKey] || '',
+          newValue: e.target.value
+        });
+        onChange(e.target.value, param.config.formKey);
+      }}
       aria-label={param.config.label}
     />
   );
@@ -71,9 +79,16 @@ export const CourseMetadataSection = ({
   editedValues,
   onChange,
 }) => {
-  console.log('CourseMetadataSection props:', {
+  console.log('[CourseMetadataSection] Initializing with props:', {
     aboutPageEditable,
-    mfeConfig,
+    mfeConfig: {
+      ...mfeConfig,
+      STUDIO_COURSE_METADATA_FIELDS: mfeConfig.STUDIO_COURSE_METADATA_FIELDS?.map(field => ({
+        label: field.config.label,
+        formKey: field.config.formKey,
+        asTextarea: field.config.asTextarea,
+      }))
+    },
     courseSettings,
     editedValues
   });

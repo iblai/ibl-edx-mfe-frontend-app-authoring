@@ -126,13 +126,19 @@ export async function getCourseSettings(courseId) {
  * @returns {Promise<Object>}
  */
 export async function getMfeConfig() {
+  console.log('[getMfeConfig] Fetching MFE config from LMS');
   try {
-    const response = await getAuthenticatedHttpClient().get(`${getMfeConfigUrl}`);
-    console.log('MFE config response:', response);
-    const { data } = response;
+    const { data } = await getAuthenticatedHttpClient().get(
+      `${getConfig().LMS_BASE_URL}/api/mfe_config/v1/`
+    );
+    console.log('[getMfeConfig] Raw MFE config response:', data);
     return data;
   } catch (error) {
-    console.error('Error fetching MFE config:', error);
+    console.error('[getMfeConfig] Error fetching MFE config:', {
+      status: error.response?.status,
+      statusText: error.response?.statusText,
+      error: error.message,
+    });
     throw error;
   }
 }
