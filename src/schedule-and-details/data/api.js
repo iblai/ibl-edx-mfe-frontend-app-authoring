@@ -14,6 +14,23 @@ export const getUploadAssetsUrl = (courseId) =>
 const getMfeConfigUrl = `${getConfig().LMS_BASE_URL}/api/mfe_config/v1?mfe=authoring`;
 
 /**
+ * Process API response to ensure data is available at both root and form_data levels
+ * @param {Object} data - API response data
+ * @returns {Object} - Processed data
+ */
+const processApiResponse = (data) => {
+  // Convert the form data to camel case
+  const camelCaseFormData = camelCaseObject(data.formData || data);
+
+  // Return data with fields at both root and form_data levels
+  return {
+    ...camelCaseFormData, // Spread form data at root level
+    formData: camelCaseFormData, // Keep original form_data
+    formChoices: data.formChoices || {}
+  };
+};
+
+/**
  * Get course details.
  * @param {string} courseId
  * @returns {Promise<Object>}
@@ -25,11 +42,7 @@ export async function getCourseDetails(courseId) {
     const response = await getAuthenticatedHttpClient().get(url);
     console.log('Course details response:', response);
     const { data } = response;
-    // Return both formData and formChoices for metadata fields
-    return {
-      ...camelCaseObject(data.formData || data),
-      formChoices: data.formChoices || {}
-    };
+    return processApiResponse(data);
   } catch (error) {
     console.log("Error response:", error.response);
     throw error;
@@ -83,11 +96,7 @@ export async function updateCourseDetails(courseId, details) {
     const response = await getAuthenticatedHttpClient().post(url, payload);
     console.log("Update response:", response);
     const { data } = response;
-    console.log("Updated data:", data);
-    return {
-      ...camelCaseObject(data.formData || data),
-      formChoices: data.formChoices || {}
-    };
+    return processApiResponse(data);
   } catch (error) {
     console.error("Error updating course details:", error);
     console.log("Error response:", error.response);
@@ -105,11 +114,7 @@ export async function getCourseSettings(courseId) {
   try {
     const { data } = await getAuthenticatedHttpClient().get(url);
     console.log('Course settings response:', data);
-    // Return both formData and formChoices for metadata fields
-    return {
-      ...camelCaseObject(data.formData || data),
-      formChoices: data.formChoices || {}
-    };
+    return processApiResponse(data);
   } catch (error) {
     console.log("Error response:", error.response);
     throw error;
