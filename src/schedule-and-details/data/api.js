@@ -23,36 +23,15 @@ export async function getCourseDetails(courseId) {
 
   try {
     const response = await getAuthenticatedHttpClient().get(url);
-    console.log("=== Course Details Response ===");
-    console.log("URL:", url);
-    console.log("Response:", JSON.stringify(response.data, null, 2));
-    console.log("=============================");
-
-    // Get the form data and choices from response
-    const formData = response.data.form_data || {};
-    const formChoices = response.data.form_choices || {
-      level: [
-        { value: "", label: "---" },
-        { value: "General Interest", label: "General Interest" },
-        { value: "Business/Executive", label: "Business/Executive" },
-        { value: "Technical - Beginner", label: "Technical - Beginner" },
-        { value: "Technical - Intermediate", label: "Technical - Intermediate" },
-        { value: "Technical - Advanced", label: "Technical - Advanced" }
-      ]
+    console.log('Course details response:', response);
+    const { data } = response;
+    // Return both formData and formChoices for metadata fields
+    return {
+      ...camelCaseObject(data.formData || data),
+      formChoices: data.formChoices || {}
     };
-
-    console.log("=== Processed Form Data ===");
-    console.log("Form Data:", JSON.stringify(formData, null, 2));
-    console.log("Form Choices:", JSON.stringify(formChoices, null, 2));
-    console.log("Level Value:", formData.level);
-    console.log("===========================");
-
-    return { formData, formChoices };
   } catch (error) {
-    console.error("=== Course Details Error ===");
-    console.error("Error:", error);
-    console.error("Error Response:", error.response?.data);
-    console.error("=========================");
+    console.log("Error response:", error.response);
     throw error;
   }
 }
@@ -66,44 +45,52 @@ export async function getCourseDetails(courseId) {
 export async function updateCourseDetails(courseId, details) {
   const url = getCourseDetailsApiUrl(courseId);
 
-  // Extract the actual form data and choices
-  const { formData, formChoices, ...otherFields } = details;
+  // Extract metadata fields and form choices from the details
+  const { formChoices, ...formData } = details;
 
-  // Create the payload with all necessary fields
+  // Ensure we preserve all required fields
+  const requiredFields = [
+    'start_date',
+    'end_date',
+    'enrollment_start',
+    'enrollment_end',
+    'certificate_available_date',
+    'certificates_display_behavior',
+    'self_paced',
+  ];
+
+  // Convert form data to snake case and ensure required fields exist
+  const snakeCaseData = convertObjectToSnakeCase(formData, true);
+
+  // Ensure all required fields are present, even if null
+  requiredFields.forEach(field => {
+    if (!(field in snakeCaseData)) {
+      snakeCaseData[field] = null;
+    }
+  });
+
+  // Create payload with data at both root and form_data levels
   const payload = {
-    ...formData,
-    ...otherFields, // Include any additional fields like level, subject, etc.
-    course_key: courseId,
-    level: otherFields.level || formData.level // Ensure level is included
+    ...snakeCaseData, // Add all form data at root level
+    form_data: snakeCaseData, // Keep form_data as is
+    form_choices: formChoices || {}
   };
 
-  console.log("=== Course Update Request Details (POST) ===");
-  console.log("URL:", url);
-  console.log("Course ID:", courseId);
-  console.log("Input details:", JSON.stringify(details, null, 2));
-  console.log("Form Data:", JSON.stringify(formData, null, 2));
-  console.log("Other Fields:", JSON.stringify(otherFields, null, 2));
-  console.log("Level Value:", payload.level);
-  console.log("Form Choices:", JSON.stringify(formChoices, null, 2));
-  console.log("Final Payload:", JSON.stringify(payload, null, 2));
-  console.log("===================================");
+  console.log("Updating course details at:", url);
+  console.log("Update payload:", payload);
 
   try {
     const response = await getAuthenticatedHttpClient().post(url, payload);
-    console.log("=== Course Update Response ===");
-    console.log("Response:", JSON.stringify(response.data, null, 2));
-    console.log("=============================");
-
-    // Return in the same format as GET response
+    console.log("Update response:", response);
+    const { data } = response;
+    console.log("Updated data:", data);
     return {
-      formData: response.data || { ...formData, ...otherFields },
-      formChoices
+      ...camelCaseObject(data.formData || data),
+      formChoices: data.formChoices || {}
     };
   } catch (error) {
-    console.error("=== Course Update Error ===");
-    console.error("Error:", error);
-    console.error("Error Response:", error.response?.data);
-    console.error("=========================");
+    console.error("Error updating course details:", error);
+    console.log("Error response:", error.response);
     throw error;
   }
 }
