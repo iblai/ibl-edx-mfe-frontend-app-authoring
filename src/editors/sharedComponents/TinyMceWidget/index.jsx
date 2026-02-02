@@ -42,6 +42,7 @@ const TinyMceWidget = ({
   id,
   editorContentHtml, // editorContent in html form
   learningContextId,
+  blockId,
   images,
   enableImageUpload,
   isLibrary,
@@ -87,6 +88,7 @@ const TinyMceWidget = ({
             editorRef,
             enableImageUpload: isLibraryV1Key(learningContextId) ? false : enableImageUpload,
             learningContextId,
+            blockId,
             images: imagesRef,
             editorContentHtml,
             staticRootUrl,
@@ -102,6 +104,7 @@ TinyMceWidget.defaultProps = {
   isLibrary: null,
   editorType: null,
   editorRef: null,
+  blockId: null,
   lmsEndpointUrl: '',
   studioEndpointUrl: '',
   images: null,
@@ -115,6 +118,7 @@ TinyMceWidget.defaultProps = {
 };
 TinyMceWidget.propTypes = {
   learningContextId: PropTypes.string.isRequired,
+  blockId: PropTypes.string,
   editorType: PropTypes.string,
   isLibrary: PropTypes.bool,
   images: PropTypes.shape({}),

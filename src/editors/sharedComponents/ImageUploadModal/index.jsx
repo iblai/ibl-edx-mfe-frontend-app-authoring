@@ -24,13 +24,14 @@ export const imgProps = ({
   isLibrary,
 }) => {
   let url = selection?.externalUrl;
-  if (url?.startsWith(lmsEndpointUrl) && editorType !== 'expandable') {
+  if (isLibrary) {
+    // For library images, use the full external URL directly.
+    // Relative paths like "static/filename" don't resolve in the MFE context
+    // since the MFE is on a different origin from Studio.
+    console.log('[Library Image] imgProps using full externalUrl:', url);
+  } else if (url?.startsWith(lmsEndpointUrl) && editorType !== 'expandable') {
     const sourceEndIndex = lmsEndpointUrl.length;
     url = url.substring(sourceEndIndex);
-  }
-  if (isLibrary) {
-    const index = url.indexOf('static/');
-    url = url.substring(index);
   }
   return {
     src: url,

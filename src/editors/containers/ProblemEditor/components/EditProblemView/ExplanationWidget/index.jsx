@@ -12,6 +12,7 @@ const ExplanationWidget = ({
   // redux
   settings,
   learningContextId,
+  blockId,
   images,
   isLibrary,
   // injected
@@ -22,6 +23,7 @@ const ExplanationWidget = ({
   const newContent = replaceStaticWithAsset({
     initialContent,
     learningContextId,
+    blockId,
   });
   const solutionContent = newContent || initialContent;
   if (!refReady) { return null; }
@@ -45,6 +47,7 @@ const ExplanationWidget = ({
           images,
           isLibrary,
           learningContextId,
+          blockId,
         }}
       />
     </div>
@@ -56,14 +59,19 @@ ExplanationWidget.propTypes = {
   // eslint-disable-next-line
   settings: PropTypes.any.isRequired,
   learningContextId: PropTypes.string.isRequired,
+  blockId: PropTypes.string,
   images: PropTypes.shape({}).isRequired,
   isLibrary: PropTypes.bool.isRequired,
   // injected
   intl: intlShape.isRequired,
 };
+ExplanationWidget.defaultProps = {
+  blockId: null,
+};
 export const mapStateToProps = (state) => ({
   settings: selectors.problem.settings(state),
   learningContextId: selectors.app.learningContextId(state),
+  blockId: selectors.app.blockId(state),
   images: selectors.app.images(state),
   isLibrary: selectors.app.isLibrary(state),
 });

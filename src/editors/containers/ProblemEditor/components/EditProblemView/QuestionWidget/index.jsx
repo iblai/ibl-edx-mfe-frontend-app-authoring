@@ -12,6 +12,7 @@ const QuestionWidget = ({
   // redux
   question,
   learningContextId,
+  blockId,
   images,
   isLibrary,
   // injected
@@ -22,6 +23,7 @@ const QuestionWidget = ({
   const newContent = replaceStaticWithAsset({
     initialContent,
     learningContextId,
+    blockId,
   });
   const questionContent = newContent || initialContent;
   if (!refReady) { return null; }
@@ -42,6 +44,7 @@ const QuestionWidget = ({
           images,
           isLibrary,
           learningContextId,
+          blockId,
         }}
       />
     </div>
@@ -52,14 +55,19 @@ QuestionWidget.propTypes = {
   // redux
   question: PropTypes.string.isRequired,
   learningContextId: PropTypes.string.isRequired,
+  blockId: PropTypes.string,
   images: PropTypes.shape({}).isRequired,
   isLibrary: PropTypes.bool.isRequired,
   // injected
   intl: intlShape.isRequired,
 };
+QuestionWidget.defaultProps = {
+  blockId: null,
+};
 export const mapStateToProps = (state) => ({
   question: selectors.problem.question(state),
   learningContextId: selectors.app.learningContextId(state),
+  blockId: selectors.app.blockId(state),
   images: selectors.app.images(state),
   isLibrary: selectors.app.isLibrary(state),
 });

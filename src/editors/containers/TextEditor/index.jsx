@@ -40,6 +40,7 @@ const TextEditor = ({
   const newContent = replaceStaticWithAsset({
     initialContent,
     learningContextId,
+    blockId,
   });
   const editorContent = newContent || initialContent;
   let staticRootUrl;

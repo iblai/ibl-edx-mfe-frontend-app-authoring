@@ -83,6 +83,7 @@ export const replaceStaticWithAsset = ({
   learningContextId,
   editorType,
   lmsEndpointUrl,
+  blockId,
 }) => {
   let content = initialContent;
   let hasChanges = false;
@@ -103,12 +104,18 @@ export const replaceStaticWithAsset = ({
       // assets in expandable text areas do not support relative urls so all assets must have the lms
       // endpoint prepended to the relative url
       if (isLibraryKey(learningContextId)) {
-        // We are removing the initial "/" in a "/static/foo.png" link, and then
-        // set the base URL to an endpoint serving the draft version of an asset by
-        // its path.
         /* istanbul ignore next */
-        if (isStatic) {
+        if (isStatic && blockId) {
+          // Construct the full API URL so the image is resolvable in the editor.
+          // The stored OLX uses portable "/static/filename" paths, but the browser
+          // needs the full Studio URL to actually load the image.
+          const studioBaseUrl = getConfig().STUDIO_BASE_URL;
+          staticFullUrl = `${studioBaseUrl}/api/libraries/v2/blocks/${blockId}/assets/${assetSrc.substring(1)}`;
+          console.log('[Library Image] replaceStaticWithAsset: converted', assetSrc, '→', staticFullUrl);
+        } else if (isStatic) {
+          // Fallback when blockId is not available: use relative path (may not render)
           staticFullUrl = assetSrc.substring(1);
+          console.log('[Library Image] replaceStaticWithAsset: no blockId, using relative path:', staticFullUrl);
         }
       } else if (editorType === 'expandable') {
         if (isCorrectAssetFormat) {
@@ -191,6 +198,7 @@ export const setupCustomBehavior = ({
   setImage,
   lmsEndpointUrl,
   learningContextId,
+  blockId,
 }) => (editor) => {
   // image upload button
   editor.ui.registry.addButton(tinyMCE.buttons.imageUploadButton, {
@@ -249,6 +257,7 @@ export const setupCustomBehavior = ({
         editorType,
         lmsEndpointUrl,
         learningContextId,
+        blockId,
       });
       if (newContent) { updateContent(newContent); }
     });
@@ -271,6 +280,7 @@ export const setupCustomBehavior = ({
       const newContent = module.replaceStaticWithAsset({
         initialContent,
         learningContextId,
+        blockId,
       });
       if (newContent) { editor.setContent(newContent); }
     }
@@ -300,6 +310,7 @@ export const editorConfig = ({
   content,
   minHeight,
   learningContextId,
+  blockId,
   staticRootUrl,
   enableImageUpload,
 }) => {
@@ -346,6 +357,7 @@ export const editorConfig = ({
         content,
         images,
         learningContextId,
+        blockId,
       }),
       quickbars_insert_toolbar: quickbarsInsertToolbar,
       quickbars_selection_toolbar: quickbarsSelectionToolbar,
@@ -407,12 +419,29 @@ export const imageMatchRegex = /asset-v1.(.*).type.(.*).block.(.*)/;
  * function matchImageStringsByIdentifiers
  *
  * matches two strings by comparing their regex capture groups using the `imageMatchRegex`
+ * For library images (which don't match the asset-v1 regex), falls back to filename comparison.
  */
 export const matchImageStringsByIdentifiers = (a, b) => {
   if (!a || !b || !(typeof a === 'string') || !(typeof b === 'string')) { return null; }
   const matchA = JSON.stringify(a.match(imageMatchRegex)?.slice?.(1));
   const matchB = JSON.stringify(b.match(imageMatchRegex)?.slice?.(1));
-  return matchA && matchA === matchB;
+  if (matchA && matchB) {
+    return matchA === matchB;
+  }
+  // Fallback for library images: compare by filename extracted from the URL/path.
+  // Library image identifiers use paths like "/static/image.jpg" or full URLs
+  // ending in "static/image.jpg", which don't match the asset-v1 regex.
+  const getFilename = (str) => {
+    const staticIdx = str.lastIndexOf('static/');
+    if (staticIdx !== -1) { return str.substring(staticIdx); }
+    return str.split('/').pop();
+  };
+  const filenameA = getFilename(a);
+  const filenameB = getFilename(b);
+  if (filenameA && filenameB && filenameA === filenameB) {
+    return true;
+  }
+  return null;
 };
 
 export const stringToFragment = (htmlString) => document.createRange().createContextualFragment(htmlString);
@@ -467,8 +496,17 @@ export const setAssetToStaticUrl = ({ editorValue, lmsEndpointUrl }) => {
 
   // TODO: should probably move this to when the assets are being looped through in the off chance that
   // some of the text in the editor contains the lmsEndpointUrl
-  const regExLmsEndpointUrl = RegExp(lmsEndpointUrl, 'g');
-  let content = editorValue.replace(regExLmsEndpointUrl, '');
+  const regExLmsEndpointUrl = lmsEndpointUrl ? RegExp(lmsEndpointUrl, 'g') : null;
+  let content = regExLmsEndpointUrl ? editorValue.replace(regExLmsEndpointUrl, '') : editorValue;
+
+  // Convert full library asset URLs back to portable /static/filename paths.
+  // These URLs look like: {studioBaseUrl}/api/libraries/v2/blocks/{blockId}/assets/static/{filename}
+  const libraryAssetRegex = /https?:\/\/[^/]+\/api\/libraries\/v2\/blocks\/[^/]+\/assets\/(static\/[^"&]+)/g;
+  content = content.replace(libraryAssetRegex, (fullUrl, staticPath) => {
+    const portableUrl = `/${staticPath}`;
+    console.log('[Library Image] setAssetToStaticUrl: converting', fullUrl, '→', portableUrl);
+    return portableUrl;
+  });
 
   const assetSrcs = typeof content === 'string' ? content.split(/(src="|src=&quot;|href="|href=&quot)/g) : [];
   assetSrcs.filter(src => src.startsWith('/asset')).forEach(src => {
@@ -484,7 +522,7 @@ export const setAssetToStaticUrl = ({ editorValue, lmsEndpointUrl }) => {
     // Before storing assets we make sure that library static assets points again to
     // `/static/dummy.jpg` instead of using the relative url `static/dummy.jpg`
     const nameFromEditorSrc = parseAssetName(src);
-    const portableUrl = `/${ nameFromEditorSrc}`;
+    const portableUrl = `/${nameFromEditorSrc}`;
     const currentSrc = src.substring(0, src.search(/("|&quot;)/));
     const updatedContent = content.replace(currentSrc, portableUrl);
     content = updatedContent;
