@@ -33,7 +33,6 @@ export const imgProps = ({
     if (staticIdx !== -1 && url) {
       url = url.substring(staticIdx + 1); // "/static/image.jpg" → "static/image.jpg"
     }
-    console.log('[Library Image] imgProps using relative path:', url);
   } else if (url?.startsWith(lmsEndpointUrl) && editorType !== 'expandable') {
     const sourceEndIndex = lmsEndpointUrl.length;
     url = url.substring(sourceEndIndex);

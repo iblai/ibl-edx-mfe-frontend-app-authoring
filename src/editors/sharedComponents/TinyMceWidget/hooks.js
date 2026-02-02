@@ -110,7 +110,6 @@ export const replaceStaticWithAsset = ({
           // TinyMCE's document_base_url (set via staticRootUrl) will resolve this to the
           // correct full URL: {STUDIO_BASE_URL}/library_assets/blocks/{blockId}/static/image.jpg
           staticFullUrl = assetSrc.substring(1);
-          console.log('[Library Image] replaceStaticWithAsset: converted', assetSrc, '→', staticFullUrl);
         }
       } else if (editorType === 'expandable') {
         if (isCorrectAssetFormat) {
@@ -499,18 +498,10 @@ export const setAssetToStaticUrl = ({ editorValue, lmsEndpointUrl }) => {
   //   - API URLs: {studioBaseUrl}/api/libraries/v2/blocks/{blockId}/assets/static/{filename}
   //   - library_assets URLs: {studioBaseUrl}/library_assets/blocks/{blockId}/static/{filename}
   const libraryApiAssetRegex = /https?:\/\/[^/]+\/api\/libraries\/v2\/blocks\/[^/]+\/assets\/(static\/[^"&\s]+)/g;
-  content = content.replace(libraryApiAssetRegex, (fullUrl, staticPath) => {
-    const portableUrl = `/${staticPath}`;
-    console.log('[Library Image] setAssetToStaticUrl: converting API URL', fullUrl, '→', portableUrl);
-    return portableUrl;
-  });
+  content = content.replace(libraryApiAssetRegex, (_match, staticPath) => `/${staticPath}`);
 
   const libraryAssetsUrlRegex = /https?:\/\/[^/]+\/library_assets\/blocks\/[^/]+\/(static\/[^"&\s]+)/g;
-  content = content.replace(libraryAssetsUrlRegex, (fullUrl, staticPath) => {
-    const portableUrl = `/${staticPath}`;
-    console.log('[Library Image] setAssetToStaticUrl: converting library_assets URL', fullUrl, '→', portableUrl);
-    return portableUrl;
-  });
+  content = content.replace(libraryAssetsUrlRegex, (_match, staticPath) => `/${staticPath}`);
 
   const assetSrcs = typeof content === 'string' ? content.split(/(src="|src=&quot;|href="|href=&quot)/g) : [];
   assetSrcs.filter(src => src.startsWith('/asset')).forEach(src => {
