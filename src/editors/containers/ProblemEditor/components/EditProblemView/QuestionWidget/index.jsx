@@ -2,6 +2,7 @@ import React from 'react';
 import PropTypes from 'prop-types';
 import { connect } from 'react-redux';
 import { injectIntl, FormattedMessage, intlShape } from '@edx/frontend-platform/i18n';
+import { getConfig } from '@edx/frontend-platform';
 import { selectors } from '../../../../../data/redux';
 import messages from './messages';
 
@@ -26,6 +27,10 @@ const QuestionWidget = ({
     blockId,
   });
   const questionContent = newContent || initialContent;
+  let staticRootUrl;
+  if (isLibrary) {
+    staticRootUrl = `${getConfig().STUDIO_BASE_URL}/library_assets/blocks/${blockId}/`;
+  }
   if (!refReady) { return null; }
   return (
     <div className="tinyMceWidget">
@@ -45,6 +50,7 @@ const QuestionWidget = ({
           isLibrary,
           learningContextId,
           blockId,
+          staticRootUrl,
         }}
       />
     </div>

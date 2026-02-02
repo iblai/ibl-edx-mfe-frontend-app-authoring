@@ -105,17 +105,12 @@ export const replaceStaticWithAsset = ({
       // endpoint prepended to the relative url
       if (isLibraryKey(learningContextId)) {
         /* istanbul ignore next */
-        if (isStatic && blockId) {
-          // Construct the full API URL so the image is resolvable in the editor.
-          // The stored OLX uses portable "/static/filename" paths, but the browser
-          // needs the full Studio URL to actually load the image.
-          const studioBaseUrl = getConfig().STUDIO_BASE_URL;
-          staticFullUrl = `${studioBaseUrl}/api/libraries/v2/blocks/${blockId}/assets/${assetSrc.substring(1)}`;
-          console.log('[Library Image] replaceStaticWithAsset: converted', assetSrc, '→', staticFullUrl);
-        } else if (isStatic) {
-          // Fallback when blockId is not available: use relative path (may not render)
+        if (isStatic) {
+          // Strip leading "/" to make the URL relative: "/static/image.jpg" → "static/image.jpg"
+          // TinyMCE's document_base_url (set via staticRootUrl) will resolve this to the
+          // correct full URL: {STUDIO_BASE_URL}/library_assets/blocks/{blockId}/static/image.jpg
           staticFullUrl = assetSrc.substring(1);
-          console.log('[Library Image] replaceStaticWithAsset: no blockId, using relative path:', staticFullUrl);
+          console.log('[Library Image] replaceStaticWithAsset: converted', assetSrc, '→', staticFullUrl);
         }
       } else if (editorType === 'expandable') {
         if (isCorrectAssetFormat) {
@@ -500,11 +495,20 @@ export const setAssetToStaticUrl = ({ editorValue, lmsEndpointUrl }) => {
   let content = regExLmsEndpointUrl ? editorValue.replace(regExLmsEndpointUrl, '') : editorValue;
 
   // Convert full library asset URLs back to portable /static/filename paths.
-  // These URLs look like: {studioBaseUrl}/api/libraries/v2/blocks/{blockId}/assets/static/{filename}
-  const libraryAssetRegex = /https?:\/\/[^/]+\/api\/libraries\/v2\/blocks\/[^/]+\/assets\/(static\/[^"&]+)/g;
-  content = content.replace(libraryAssetRegex, (fullUrl, staticPath) => {
+  // These URLs can be either:
+  //   - API URLs: {studioBaseUrl}/api/libraries/v2/blocks/{blockId}/assets/static/{filename}
+  //   - library_assets URLs: {studioBaseUrl}/library_assets/blocks/{blockId}/static/{filename}
+  const libraryApiAssetRegex = /https?:\/\/[^/]+\/api\/libraries\/v2\/blocks\/[^/]+\/assets\/(static\/[^"&\s]+)/g;
+  content = content.replace(libraryApiAssetRegex, (fullUrl, staticPath) => {
     const portableUrl = `/${staticPath}`;
-    console.log('[Library Image] setAssetToStaticUrl: converting', fullUrl, '→', portableUrl);
+    console.log('[Library Image] setAssetToStaticUrl: converting API URL', fullUrl, '→', portableUrl);
+    return portableUrl;
+  });
+
+  const libraryAssetsUrlRegex = /https?:\/\/[^/]+\/library_assets\/blocks\/[^/]+\/(static\/[^"&\s]+)/g;
+  content = content.replace(libraryAssetsUrlRegex, (fullUrl, staticPath) => {
+    const portableUrl = `/${staticPath}`;
+    console.log('[Library Image] setAssetToStaticUrl: converting library_assets URL', fullUrl, '→', portableUrl);
     return portableUrl;
   });
 

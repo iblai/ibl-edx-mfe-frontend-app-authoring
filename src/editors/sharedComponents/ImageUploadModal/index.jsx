@@ -25,10 +25,15 @@ export const imgProps = ({
 }) => {
   let url = selection?.externalUrl;
   if (isLibrary) {
-    // For library images, use the full external URL directly.
-    // Relative paths like "static/filename" don't resolve in the MFE context
-    // since the MFE is on a different origin from Studio.
-    console.log('[Library Image] imgProps using full externalUrl:', url);
+    // For library images, use a relative "static/filename" path.
+    // TinyMCE's document_base_url resolves this to the correct full URL
+    // ({STUDIO_BASE_URL}/library_assets/blocks/{blockId}/static/filename).
+    // Extract "static/filename" from the full API URL.
+    const staticIdx = url?.lastIndexOf('/static/');
+    if (staticIdx !== -1 && url) {
+      url = url.substring(staticIdx + 1); // "/static/image.jpg" → "static/image.jpg"
+    }
+    console.log('[Library Image] imgProps using relative path:', url);
   } else if (url?.startsWith(lmsEndpointUrl) && editorType !== 'expandable') {
     const sourceEndIndex = lmsEndpointUrl.length;
     url = url.substring(sourceEndIndex);
