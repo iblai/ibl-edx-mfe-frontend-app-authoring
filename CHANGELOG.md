@@ -1,5 +1,21 @@
 # Changelog
 
+## [0.1.2] - 2026-03-31
+
+### Fixed
+- **Slow course page loads due to unnecessary courses fetch**: Fixed `CourseAuthoringPage` eagerly fetching all courses via `/api/contentstore/v1/home/courses` on every course sub-page (grading, settings, outline, etc.)
+  - The fetch was triggered to populate Redux state for the Header component, but only `canAccessAdvancedSettings` from `/api/contentstore/v1/home/` was actually needed
+  - Added `fetchStudioHomeMetadata()` thunk that fetches only the lightweight `/home/` metadata endpoint, skipping the expensive `/home/courses` call
+  - `CourseAuthoringPage` now uses `fetchStudioHomeMetadata()` instead of `fetchStudioHomeData()`
+  - On instances with 1,600+ courses, this eliminates a ~38s / 639KB blocking request on every course page navigation
+  - The Studio Home page continues to use `fetchStudioHomeData()` where the full course listing is needed
+
+### Files Modified
+- `src/studio-home/data/thunks.js` - Added `fetchStudioHomeMetadata()` thunk
+- `src/CourseAuthoringPage.jsx` - Switched to `fetchStudioHomeMetadata()`
+
+---
+
 ## [0.1.1] - 2026-02-02
 
 ### Fixed
