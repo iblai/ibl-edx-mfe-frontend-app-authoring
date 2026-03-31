@@ -74,6 +74,19 @@ function handleDeleteNotificationQuery(url) {
   };
 }
 
+function fetchStudioHomeMetadata() {
+  return async (dispatch) => {
+    dispatch(updateLoadingStatuses({ studioHomeLoadingStatus: RequestStatus.IN_PROGRESS }));
+    try {
+      const studioHomeData = await getStudioHomeData();
+      dispatch(fetchStudioHomeDataSuccess(studioHomeData));
+      dispatch(updateLoadingStatuses({ studioHomeLoadingStatus: RequestStatus.SUCCESSFUL }));
+    } catch (error) {
+      dispatch(updateLoadingStatuses({ studioHomeLoadingStatus: RequestStatus.FAILED }));
+    }
+  };
+}
+
 function requestCourseCreatorQuery() {
   return async (dispatch) => {
     dispatch(updateSavingStatuses({ courseCreatorSavingStatus: RequestStatus.PENDING }));
@@ -91,6 +104,7 @@ function requestCourseCreatorQuery() {
 
 export {
   fetchStudioHomeData,
+  fetchStudioHomeMetadata,
   fetchLibraryData,
   requestCourseCreatorQuery,
   handleDeleteNotificationQuery,
