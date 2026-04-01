@@ -10,7 +10,7 @@ import {
   getCourseData,
 } from '../generic/data/selectors';
 import { fetchCourseRerunQuery, fetchOrganizationsQuery } from '../generic/data/thunks';
-import { fetchStudioHomeData } from '../studio-home/data/thunks';
+import { fetchStudioHomeMetadata } from '../studio-home/data/thunks';
 
 const useCourseRerun = (courseId) => {
   const intl = useIntl();
@@ -34,7 +34,7 @@ const useCourseRerun = (courseId) => {
   };
 
   useEffect(() => {
-    dispatch(fetchStudioHomeData());
+    dispatch(fetchStudioHomeMetadata());
     dispatch(fetchCourseRerunQuery(courseId));
     dispatch(fetchOrganizationsQuery());
   }, []);
